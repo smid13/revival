@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Skenování QR kódu</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+<h1>Zaznamenání průchodu</h1>
+
+<form method="get" action="{{ url_for('scan_checkpoint', checkpoint_id=0) }}" id="checkpointForm">
+    <label for="checkpoint_id">Vyber kontrolní bod:</label>
+    <select name="checkpoint_id" id="checkpoint_id" onchange="goToCheckpoint()">
+        <option disabled selected>-- Vyber --</option>
+        {% for cp in checkpoints %}
+            <option value="{{ cp.id }}" {% if checkpoint and cp.id == checkpoint.id %}selected{% endif %}>
+                {{ cp.name }}
+            </option>
+        {% endfor %}
+    </select>
+</form>
+
+<script>
+    function goToCheckpoint() {
+        const selectedId = document.getElementById("checkpoint_id").value;
+        window.location.href = "/scan/" + selectedId;
+    }
+</script>
+
+{% if checkpoint %}
+    <h2>Kontrolní bod: {{ checkpoint.name }}</h2>
+    <p>Celkem posádek: {{ total_crews }}</p>
+    <p>Posádek, které už prošly: {{ passed_count }}</p>
+    <p>Posádek zbývá: {{ remaining }}</p>
+{% endif %}
+
+
+    <br><br>
+    <button onclick="startScan()">📷 Skenovat QR kód</button>
+
+    <div id="reader" style="width:300px; margin-top:20px;"></div>
+    <p id="result" style="margin-top:20px; font-weight:bold;"></p>
+
+    <script>
+        function startScan() {
+            const reader = new Html5Qrcode("reader");
+            reader.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: 250
+                },
+                qrCodeMessage => {
+                    reader.stop();
+                    const crewId = qrCodeMessage.trim();
+                    const checkpointId = document.getElementById("checkpoint_id").value;
+
+                    fetch(`/scan/${crewId}/${checkpointId}`, {
+                        method: "POST"
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        document.getElementById("result").textContent = data.message;
+                    })
+                    .catch(err => {
+                        document.getElementById("result").textContent = "Chyba při záznamu.";
+                        console.error(err);
+                    });
+                },
+                errorMessage => {
+                    // Volitelně: console.log("Nepodařilo se přečíst QR:", errorMessage);
+                }
+            );
+        }
+    </script>
+</body>
+</html>

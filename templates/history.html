@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8" />
+    <title>Historie průchodů</title>
+</head>
+<body>
+    <h1>Historie průchodů posádek</h1>
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Posádka č.</th>
+                <th>Jméno posádky</th>
+                <th>Kontrolní bod</th>
+                <th>Čas průchodu</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scan in scans %}
+            <tr>
+                <td>{{ scan.crew.number }}</td>
+                <td>{{ scan.crew.name }}</td>
+                <td>{{ scan.checkpoint.name }}</td>
+                <td>{{ scan.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">Žádné záznamy</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <a href="{{ url_for('scan_page') }}">← Zpět ke skenování</a>
+    <p><a href="{{ url_for('index') }}">← Domů</a></p>
+    <p> Historie průjezdů jednotlivých ČK </p>
+    <form method="get" action="{{ url_for('history_checkpoint', checkpoint_id=0) }}" id="checkpointForm">
+    <label for="checkpoint_id">Vyber kontrolní bod:</label>
+    <select name="checkpoint_id" id="checkpoint_id" onchange="goToCheckpoint()">
+        <option disabled selected>-- Vyber --</option>
+        {% for cp in checkpoints %}
+            <option value="{{ cp.id }}" {% if checkpoint and cp.id == checkpoint.id %}selected{% endif %}>
+                {{ cp.name }}
+            </option>
+        {% endfor %}
+    </select>
+    </form>
+    <script>
+    function goToCheckpoint() {
+        const selectedId = document.getElementById("checkpoint_id").value;
+        window.location.href = "/history/checkpoint/" + selectedId;
+    }
+    </script>
+
+</body>
+</html>

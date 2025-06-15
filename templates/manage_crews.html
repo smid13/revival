@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Správa posádek – {{ race.name }}</title>
+</head>
+<body>
+    <h1>Posádky – {{ race.name }}</h1>
+    <a href="{{ url_for('create_crew', race_id=race.id) }}">+ Přidat posádku</a>
+    <table border="1" cellpadding="5">
+        <tr>
+            <th>ID</th>
+            <th>Číslo</th>
+            <th>Jméno posádky</th>
+            <th>Vozidlo</th>
+            <th>Stav</th>
+            <th>Akce</th>
+        </tr>
+        {% for crew in crews %}
+        <tr>
+            <td>{{ crew.id }}</td>
+            <td>{{ crew.number }}</td>
+            <td>{{ crew.name }}</td>
+            <td>{{ crew.vehicle }}</td>
+            <td>{{ 'Aktivní' if crew.is_active else 'Neaktivní' }}</td>
+            <td>
+                <form method="post" action="{{ url_for('toggle_crew_active', crew_id=crew.id) }}" style="display:inline;">
+                    <button type="submit">
+                        {% if crew.is_active %}Deaktivovat{% else %}Aktivovat{% endif %}
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('delete_crew', crew_id=crew.id) }}" style="display:inline;" onsubmit="return confirm('Opravdu smazat?');">
+                    <button type="submit">Smazat</button>
+                </form>
+                <form method="post" action="{{ url_for('edit_crew', crew_id=crew.id) }}" style="display:inline;">
+                    <button type="submit">Edit</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <a href="{{ url_for('race_detail', race_id=race.id) }}">← Zpět na závod</a>
+</body>
+</html>

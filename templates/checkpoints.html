@@ -1,0 +1,14 @@
+<h1>Seznam Časových Kontrol</h1>
+<ul>
+  {% for checkpoint in checkpoints %}
+    <li>
+      <strong>ČK {{ checkpoint.id }}</strong><br>
+      Ideální čas pro posádku č. 1:
+      {% for arrival in checkpoint.ideal_arrivals %}
+        {% if arrival.crew.number == "1" %}
+          {{ arrival.ideal_time.strftime("%H:%M") }}
+        {% endif %}
+      {% endfor %}
+    </li>
+  {% endfor %}
+</ul>

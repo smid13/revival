@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8" />
+    <title>Historie průchodů - {{ checkpoint.name }}</title>
+</head>
+<body>
+    <h1>Historie průchodů - {{ checkpoint.name }}</h1>
+
+    {% set first_arrival = checkpoint.ideal_arrivals | selectattr('crew.number', 'equalto', '1') | list | first %}
+    {% if first_arrival %}
+        <p><strong>Ideální čas příjezdu první posádky:</strong> {{ first_arrival.ideal_time.strftime('%H:%M') }}</p>
+    {% else %}
+    <p>Ideální čas pro posádku č. 1 není k dispozici.</p>
+{% endif %}
+
+    {% if checkpoint.ideal_arrivals|length > 0 %}
+        {% set last_arrival = checkpoint.ideal_arrivals | last %}
+        <p><strong>Ideální čas příjezdu poslední posádky:</strong> {{ last_arrival.ideal_time.strftime('%H:%M') }}</p>
+        <p>Posádka číslo: {{ checkpoint.ideal_arrivals }}</p>
+    {% else %}
+        <p>Žádné ideální příjezdy.</p>
+    {% endif %}
+
+
+    <p>Celkem posádek: {{ total_crews }}</p>
+    <p>Posádek, které už prošly: {{ passed_count }}</p>
+    <p>Posádek, které ještě neprošly: {{ remaining }}</p>
+    <h2>Ideální časy příjezdů posádek</h2>
+    <ul>
+        {% for arrival in checkpoint.ideal_arrivals %}
+            <li>Posádka {{ arrival.crew.number }} – {{ arrival.ideal_time.strftime("%H:%M") }}</li>
+        {% endfor %}
+    </ul>
+
+    <!-- tabulka se záznamy -->
+    <table border="1" cellpadding="5" cellspacing="0">
+        <!-- ... -->
+    </table>
+
+    <h1>Historie průchodů - {{ checkpoint.name }}</h1>
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Posádka č.</th>
+                <th>Jméno posádky</th>
+                <th>Čas průchodu</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scan in scans %}
+            <tr>
+                <td>{{ scan.crew.number }}</td>
+                <td>{{ scan.crew.name }}</td>
+                <td>{{ scan.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">Žádné záznamy</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <a href="{{ url_for('history') }}">← Zpět na celkovou historii</a>
+</body>
+</html>

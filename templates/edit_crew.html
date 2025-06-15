@@ -1,0 +1,24 @@
+<h2>Úprava posádky č. {{ crew.id }}</h2>
+
+<form method="post">
+    <label>Jméno posádky:</label>
+    <input type="text" name="name" value="{{ crew.name }}" required><br>
+
+    <label>Číslo posádky:</label>
+    <input type="text" name="number" value="{{ crew.number }}" required><br>
+
+    <label>Vozidlo:</label>
+    <input type="text" name="vehicle" value="{{ crew.vehicle or '' }}"><br>
+
+    <label>
+        <input type="checkbox" name="is_active" {% if crew.is_active %}checked{% endif %}>
+        Aktivní
+    </label><br>
+
+    <button type="submit">💾 Uložit změny</button>
+</form>
+
+<!-- Tlačítko zpět -->
+<form method="get" action="{{ url_for('manage_crews', race_id=crew.race_id) }}" style="margin-top: 1em;">
+    <button type="submit">⬅ Zpět</button>
+</form>
