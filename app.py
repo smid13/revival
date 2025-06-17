@@ -1,6 +1,6 @@
 from flask import Flask, request, redirect, render_template, jsonify, url_for
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Time
+from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import qrcode
@@ -107,7 +107,7 @@ def race_detail(race_id):
 @app.route("/race/<int:race_id>/crews", methods=["GET"])
 def manage_crews(race_id):
     race = Race.query.get_or_404(race_id)
-    crews = Crew.query.filter_by(race_id=race.id).order_by(Crew.number).all()
+    crews = Crew.query.filter_by(race_id=race.id).order_by(cast(Crew.number, Integer)).all()
     return render_template("manage_crews.html", race=race, crews=crews)
 
 @app.route("/race/<int:race_id>/crews/create", methods=["GET", "POST"])
@@ -183,7 +183,6 @@ def delete_crew(crew_id):
 @app.route("/crew/<int:crew_id>/edit", methods=["GET", "POST"])
 def edit_crew(crew_id):
     crew = Crew.query.get_or_404(crew_id)
-
     error = None
 
     if request.method == "POST":
@@ -195,12 +194,28 @@ def edit_crew(crew_id):
         if not name or not number:
             error = "Jméno a číslo posádky jsou povinné!"
         else:
+            # Uložení původního názvu pro smazání starého QR kódu (pokud se změnil název)
+            old_name = crew.name
             crew.name = name
             crew.number = number
             crew.vehicle = vehicle
             crew.is_active = is_active
-
             db.session.commit()
+
+            # Cesta k původnímu QR kódu
+            old_qr_path = os.path.join(QR_FOLDER, f"{old_name}_{crew.id}.png")
+            # Nová cesta k QR kódu
+            new_qr_path = os.path.join(QR_FOLDER, f"{crew.name}_{crew.id}.png")
+
+            # Pokud se změnil název, smažeme starý QR kód
+            if old_name != crew.name and os.path.exists(old_qr_path):
+                os.remove(old_qr_path)
+
+            # Vytvoření nového QR kódu (stejný obsah jako při vytvoření)
+            qr_text = str(crew.id)
+            qr_img = qrcode.make(qr_text)
+            qr_img.save(new_qr_path)
+
             return redirect(f"/race/{crew.race_id}/crews")
 
     return render_template("edit_crew.html", crew=crew, error=error)
@@ -261,7 +276,7 @@ def history_checkpoint(checkpoint_id):
     ).get_or_404(checkpoint_id)
 
     # Všechny posádky v závodě seřazené podle čísla
-    all_crews = Crew.query.filter_by(race_id=checkpoint.race_id).order_by(Crew.number).all()
+    all_crews = Crew.query.filter_by(race_id=checkpoint.race_id).order_by(cast(Crew.number, Integer)).all()
     total_crews = len(all_crews)
 
     # Posádky, které už prošly checkpointem
