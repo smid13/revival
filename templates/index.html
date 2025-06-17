@@ -39,7 +39,6 @@
     <h1>Vítej v systému závodu</h1>
 
     <a href="{{ url_for('create_race') }}" class="button">+ Vytvoř závod</a>
-    <a href="{{ url_for('setup_ideal_times') }}" class="button">+ Zadej časové kontroly</a>
     <a href="{{ url_for('history') }}" class="button">Historie průchodů</a>
 
     <hr style="margin: 40px 0;">
@@ -52,6 +51,7 @@
                 <div style="margin-top: 15px;">
                     <a href="{{ url_for('race_detail', race_id=race.id) }}" class="button">Závod</a>
                     <a href="{{ url_for('manage_crews', race_id=race.id) }}" class="button">Posádky</a>
+                    <a href="{{ url_for('setup_ideal_times', race_id=race.id) }}" class="button">+ Zadej časové kontroly</a>
                     <a href="{{ url_for('checkpoint_overview', race_id=race.id) }}" class="button">Časové kontroly</a>
                     {% if race.checkpoints %}
                         <a href="{{ url_for('scan_page', checkpoint_id=race.checkpoints[0].id) }}" class="button">Skenování</a>

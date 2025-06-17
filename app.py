@@ -1,5 +1,7 @@
 from flask import Flask, request, redirect, render_template, jsonify, url_for
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Time
+from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import qrcode
 import os
@@ -9,24 +11,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 db = SQLAlchemy(app)
 
 # složka, kam budeme ukládat QR kódy
-QR_FOLDER = os.path.join("qrcodes")
+QR_FOLDER = os.path.join(app.static_folder, "qrcodes")
 os.makedirs(QR_FOLDER, exist_ok=True)
-
-def generate_ideal_times(first_ck_time_str, intervals, crews, checkpoints):
-    # převod textového času na datetime
-    current_time = datetime.strptime(first_ck_time_str, "%Y-%m-%d %H:%M")
-
-    # první posádka má číslo 1
-    sorted_crews = sorted(crews, key=lambda c: int(c.number))
-
-    for i, crew in enumerate(sorted_crews):
-        crew_time = current_time + timedelta(minutes=i)
-        for j, ck in enumerate(checkpoints):
-            ideal = IdealTime(crew_id=crew.id, checkpoint_id=ck.id, ideal_time=crew_time)
-            db.session.add(ideal)
-            if j < len(intervals):
-                crew_time += timedelta(minutes=intervals[j])
-    db.session.commit()
 
 # Modely
 class Race(db.Model):
@@ -65,19 +51,10 @@ class IdealTime(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     crew_id = db.Column(db.Integer, db.ForeignKey('crew.id'), nullable=False)
     checkpoint_id = db.Column(db.Integer, db.ForeignKey('checkpoint.id'), nullable=False)
-    ideal_time = db.Column(db.DateTime, nullable=False)
+    ideal_time = db.Column(Time)
 
     crew = db.relationship('Crew', backref='ideal_times')
     checkpoint = db.relationship('Checkpoint', backref='ideal_times')
-
-class IdealArrival(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    checkpoint_id = db.Column(db.Integer, db.ForeignKey('checkpoint.id'), nullable=False)
-    crew_id = db.Column(db.Integer, db.ForeignKey('crew.id'), nullable=False)
-    ideal_time = db.Column(db.Time, nullable=False)
-
-    checkpoint = db.relationship('Checkpoint', backref='ideal_arrivals')
-    crew = db.relationship('Crew', backref='ideal_arrivals')
 
 @app.route("/")
 def index():
@@ -111,7 +88,21 @@ def race_detail(race_id):
     race = Race.query.get_or_404(race_id)
     crews = Crew.query.filter_by(race_id=race.id).order_by(Crew.number).all()
     checkpoints = Checkpoint.query.filter_by(race_id=race.id).order_by(Checkpoint.order).all()
-    return render_template("race_detail.html", race=race, crews=crews, checkpoints=checkpoints)
+    
+    # Získání ideálních časů první posádky
+    first_crew = next((crew for crew in crews if crew.number == '1'), None)
+    checkpoint_times = {}
+    if first_crew:
+        ideal_times = IdealTime.query.filter_by(crew_id=first_crew.id).all()
+        checkpoint_times = {time.checkpoint_id: time.ideal_time.strftime('%H:%M') for time in ideal_times}
+    
+    return render_template(
+        "race_detail.html", 
+        race=race, 
+        crews=crews, 
+        checkpoints=checkpoints,
+        checkpoint_times=checkpoint_times
+    )
 
 @app.route("/race/<int:race_id>/crews", methods=["GET"])
 def manage_crews(race_id):
@@ -122,6 +113,8 @@ def manage_crews(race_id):
 @app.route("/race/<int:race_id>/crews/create", methods=["GET", "POST"])
 def create_crew(race_id):
     race = Race.query.get_or_404(race_id)
+    checkpoints = Checkpoint.query.filter_by(race_id=race_id).order_by(Checkpoint.order).all()
+    
     if request.method == "POST":
         name = request.form["name"]
         vehicle = request.form["vehicle"]
@@ -131,14 +124,45 @@ def create_crew(race_id):
         db.session.add(crew)
         db.session.commit()
 
-        # === Vygenerování QR kódu ===
+        # Vygenerování QR kódu
         qr_text = str(crew.id)
         qr_img = qrcode.make(qr_text)
-        qr_path = os.path.join(QR_FOLDER, f"crew_{crew.id}.png")
+        qr_path = os.path.join(QR_FOLDER, f"{crew.name}_{crew.id}.png")
         qr_img.save(qr_path)
 
+        # Pokud už existují ideální časy pro tento závod, vypočítáme je i pro novou posádku
+        existing_times = IdealTime.query.filter(
+            IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints]),
+            IdealTime.crew_id == Crew.query.filter_by(race_id=race_id, number="1").first().id
+        ).order_by(IdealTime.checkpoint_id).all()
+
+        if existing_times:
+            try:
+                crew_offset = int(crew.number) - 1  # Posádka č.1 má offset 0
+                
+                for ideal_time in existing_times:
+                    # Převedeme čas na datetime pro výpočet
+                    base_date = datetime.today().date()
+                    original_time = datetime.combine(base_date, ideal_time.ideal_time)
+                    
+                    # Přidáme offset podle čísla posádky
+                    new_time = original_time + timedelta(minutes=crew_offset * race.crew_interval)
+                    
+                    # Vytvoříme nový záznam
+                    new_ideal_time = IdealTime(
+                        crew_id=crew.id,
+                        checkpoint_id=ideal_time.checkpoint_id,
+                        ideal_time=new_time.time()
+                    )
+                    db.session.add(new_ideal_time)
+                
+                db.session.commit()
+            except (ValueError, TypeError):
+                db.session.rollback()
+                # Pokud číslo posádky není platné, přeskočíme generování časů
 
         return redirect(f"/race/{race.id}/crews")
+    
     return render_template("create_crew.html", race=race)
 
 @app.route("/crew/<int:crew_id>/toggle_active", methods=["POST"])
@@ -232,75 +256,139 @@ def history():
 
 @app.route("/history/checkpoint/<int:checkpoint_id>")
 def history_checkpoint(checkpoint_id):
-    checkpoint = Checkpoint.query.get_or_404(checkpoint_id)
+    checkpoint = Checkpoint.query.options(
+        joinedload(Checkpoint.ideal_times).joinedload(IdealTime.crew)
+    ).get_or_404(checkpoint_id)
 
-    # Celkový počet posádek v závodě
-    total_crews = Crew.query.filter_by(race_id=checkpoint.race_id).count()
+    # Všechny posádky v závodě seřazené podle čísla
+    all_crews = Crew.query.filter_by(race_id=checkpoint.race_id).order_by(Crew.number).all()
+    total_crews = len(all_crews)
 
-    # Počet posádek, které už mají průjezd přes checkpoint
-    passed_crew_ids = db.session.query(ScanRecord.crew_id).filter_by(checkpoint_id=checkpoint_id).distinct().all()
-    passed_count = len(passed_crew_ids)
+    # Posádky, které už prošly checkpointem
+    passed_crews = db.session.query(Crew).join(ScanRecord)\
+        .filter(ScanRecord.checkpoint_id == checkpoint_id)\
+        .order_by(Crew.number).all()
+    passed_count = len(passed_crews)
 
-    remaining = total_crews - passed_count
+    # Načteme všechny ideální časy pro tento checkpoint najednou
+    ideal_times = {it.crew_id: it for it in checkpoint.ideal_times}
 
-    scans = ScanRecord.query.filter_by(checkpoint_id=checkpoint_id).order_by(ScanRecord.timestamp.desc()).all()
-    ideal_time = db.session.query(IdealTime.ideal_time)\
-    .join(Crew, IdealTime.crew_id == Crew.id)\
-    .filter(IdealTime.checkpoint_id == checkpoint.id, Crew.number == '1')\
-    .first()
+    # Propojení dat
+    crew_data = []
+    for crew in all_crews:
+        scan = next((s for s in passed_crews if s.id == crew.id), None)
+        ideal_time = ideal_times.get(crew.id)
+        
+        crew_data.append({
+            'crew': crew,
+            'scan': scan,
+            'ideal_time': ideal_time.ideal_time if ideal_time else None
+        })
+
+    # Najdeme ideální čas pro posádku č. 1
+    first_crew_ideal = next((it for it in checkpoint.ideal_times 
+                           if it.crew.number == '1'), None)
+    # Najdeme ideální čas pro poslední posádku
+    if all_crews:
+        # Seřadíme posádky podle čísla (jako integer pro správné řazení)
+        sorted_crews = sorted(all_crews, key=lambda c: int(c.number))
+        last_crew_number = sorted_crews[-1].number
+        last_crew_ideal = next(
+            (it for it in checkpoint.ideal_times if it.crew.number == last_crew_number),
+            None
+        )
+    else:
+        last_crew_ideal = None
+        # Získání všech scanů pro tento checkpoint
+    scans = ScanRecord.query.filter_by(checkpoint_id=checkpoint_id)\
+        .order_by(ScanRecord.timestamp.desc()).all()
 
     return render_template("history_checkpoint.html",
-                           checkpoint=checkpoint,
-                           scans=scans,
-                           total_crews=total_crews,
-                           passed_count=passed_count,
-                           remaining=remaining,
-                           ideal_time=ideal_time[0] if ideal_time else None)
+                         checkpoint=checkpoint,
+                         crew_data=crew_data,
+                         total_crews=total_crews,
+                         passed_count=passed_count,
+                         remaining=total_crews - passed_count,
+                         first_crew_ideal=first_crew_ideal,
+                         last_crew_ideal=last_crew_ideal)
 
-@app.route('/setup-ideal-times', methods=['GET', 'POST'])
-def setup_ideal_times():
-    checkpoints = Checkpoint.query.order_by(Checkpoint.id).all()
-    crews = Crew.query.order_by(Crew.number).all()
+
+@app.route('/race/<int:race_id>/setup_ideal_times', methods=['GET', 'POST'])
+def setup_ideal_times(race_id):
+    race = Race.query.get_or_404(race_id)
+    checkpoints = Checkpoint.query.filter_by(race_id=race_id).order_by(Checkpoint.order).all()
+    crews = Crew.query.filter_by(race_id=race_id).order_by(Crew.number).all()
 
     if request.method == 'POST':
-        # Získáme čas první ČK
-        start_time_str = request.form.get("start_time")
-        start_time = datetime.strptime(start_time_str, "%H:%M").time()
+        try:
+            # Získání startovního času
+            start_time_str = request.form.get("start_time")
+            if not start_time_str:
+                return "Nebyl zadán startovní čas", 400
+            
+            try:
+                start_time = datetime.strptime(start_time_str, "%H:%M").time()
+            except ValueError:
+                return "Neplatný formát času. Použijte HH:MM", 400
 
-        # Získáme intervaly
-        intervals = []
-        for i in range(1, len(checkpoints)):
-            val = request.form.get(f"interval_{i}")
-            if not val:
-                return f"Chybí interval pro ČK {i+1}", 400
-            m, s = map(int, val.split(":"))
-            intervals.append(timedelta(minutes=m, seconds=s))
+            # Získání intervalů mezi checkpointy
+            intervals = []
+            for i in range(1, len(checkpoints)):
+                interval_key = f"interval_{checkpoints[i-1].id}_{checkpoints[i].id}"
+                interval_str = request.form.get(interval_key)
+                if not interval_str:
+                    return f"Chybí interval mezi {checkpoints[i-1].name} a {checkpoints[i].name}", 400
+                
+                try:
+                    minutes, seconds = map(int, interval_str.split(":"))
+                    intervals.append(timedelta(minutes=minutes, seconds=seconds))
+                except (ValueError, AttributeError):
+                    return f"Neplatný formát intervalu mezi {checkpoints[i-1].name} a {checkpoints[i].name}. Použijte MM:SS", 400
 
-        # Vytvoříme časy pro posádku č. 1
-        ideal_times_by_checkpoint = [start_time]
-        current_dt = datetime.combine(datetime.today(), start_time)
-        for interval in intervals:
-            current_dt += interval
-            ideal_times_by_checkpoint.append(current_dt.time())
+            # NEBEGINUJEME novou transakci, Flask-SQLAlchemy už ji spravuje
+            
+            # Smazání starých časů pro tento závod
+            IdealTime.query.filter(
+                IdealTime.crew_id.in_([c.id for c in crews]),
+                IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints])
+            ).delete(synchronize_session=False)
 
-        # Pro každou posádku spočítáme čas s minutovým rozestupem
-        for offset, crew in enumerate(crews):
-            for idx, checkpoint in enumerate(checkpoints):
-                ideal_dt = (datetime.combine(datetime.today(), ideal_times_by_checkpoint[idx]) +
-                            timedelta(minutes=offset))
-                existing = IdealArrival.query.filter_by(checkpoint_id=checkpoint.id, crew_id=crew.id).first()
-                if existing:
-                    existing.ideal_time = ideal_dt.time()
-                else:
-                    db.session.add(IdealArrival(
-                        checkpoint_id=checkpoint.id,
+            # Výpočet základního data
+            base_date = race.start_time.date() if race.start_time else datetime.now().date()
+            current_time = datetime.combine(base_date, start_time)
+
+            # Výpočet časů pro posádku č. 1
+            checkpoint_times = [current_time]
+            for i in range(1, len(checkpoints)):
+                checkpoint_times.append(checkpoint_times[i-1] + intervals[i-1])
+
+            # Seřadíme posádky podle čísla
+            sorted_crews = sorted(crews, key=lambda c: int(c.number))
+            
+            # Uložení časů pro všechny posádky
+            for index, crew in enumerate(sorted_crews):  # index 0 = první posádka
+                for checkpoint, ideal_time in zip(checkpoints, checkpoint_times):
+                    # Rozestup 1 minuta mezi každou posádkou
+                    crew_ideal_time = ideal_time + timedelta(minutes=index)
+                    
+                    ideal_record = IdealTime(
                         crew_id=crew.id,
-                        ideal_time=ideal_dt.time()
-                    ))
-        db.session.commit()
-        return redirect(url_for("index"))
+                        checkpoint_id=checkpoint.id,
+                        ideal_time=crew_ideal_time.time()
+                    )
+                    db.session.add(ideal_record)
 
-    return render_template("setup_ideal_times.html", checkpoints=checkpoints)
+            db.session.commit()
+            return redirect(url_for('checkpoint_overview', race_id=race_id, success=True))
+
+        except Exception as e:
+            db.session.rollback()
+            return f"Došlo k chybě: {str(e)}", 500
+
+    return render_template("setup_ideal_times.html", 
+                         race=race,
+                         checkpoints=checkpoints,
+                         crews=crews)
 
 @app.route("/race/<int:race_id>/checkpoints")
 def checkpoint_overview(race_id):
@@ -311,11 +399,11 @@ def checkpoint_overview(race_id):
     first_crew = Crew.query.filter_by(race_id=race_id, number="1").first()
     times = {}
     if first_crew:
-        times = {it.checkpoint_id: it.ideal_arrival for it in IdealTime.query.filter_by(crew_id=first_crew.id).all()}
+        times = {it.checkpoint_id: it.ideal_time for it in IdealTime.query.filter_by(crew_id=first_crew.id).all()}
 
     return render_template("checkpoints.html", race=race, checkpoints=checkpoints, ideal_times=times)
     
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True) 
+    app.run(debug=True)

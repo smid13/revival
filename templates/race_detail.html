@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <title>Detail závodu</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Závod: {{ race.name }}</h1>
+  <p>Start první posádky: {{ race.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
+  <p>Interval mezi posádkami: {{ race.crew_interval }} minut</p>
+  
+  <p><a href="/race/{{ race.id }}/crews">Správa posádek</a></p>
+  <p><a href="/race/{{ race.id }}/setup_ideal_times">Nastavit ideální časy</a></p>
+  <p><a href="{{ url_for('index') }}">Domů</a></p>
+
+  <h2>Posádky</h2>
+  <ul>
+    {% for crew in crews %}
+      <li>Posádka č. {{ crew.number }} - {{ crew.name }} ({{ crew.vehicle }})</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Časové kontroly</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Název</th>
+        <th>Ideální čas první posádky</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ck in checkpoints %}
+      <tr>
+        <td>{{ ck.name }}</td>
+        <td>
+          {% if checkpoint_times.get(ck.id) %}
+            {{ checkpoint_times[ck.id] }}
+          {% else %}
+            (nenastaveno)
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

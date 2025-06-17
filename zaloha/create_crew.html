@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vytvořit posádku</title>
+</head>
+<body>
+    <h1>Vytvořit novou posádku pro závod: {{ race.name }}</h1>
+    <form method="post">
+        <label>Jméno posádky:</label><br>
+        <input type="text" name="name" required><br>
+
+        <label>Vozidlo:</label><br>
+        <input type="text" name="vehicle" required><br>
+
+        <label>Startovní číslo (např. 001):</label><br>
+        <input type="text" name="number" required><br>
+
+        <input type="submit" value="Uložit">
+    </form>
+    <a href="/race/{{ race.id }}/crews">Zpět na seznam posádek</a>
+</body>
+</html>

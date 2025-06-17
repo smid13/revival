@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Správa posádek</title>
+</head>
+<body>
+    <h1>Správa posádek – {{ race.name }}</h1>
+
+    <a href="/race/{{ race.id }}/crews/create">➕ Přidat novou posádku</a>
+
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Startovní číslo</th>
+                <th>Jméno posádky</th>
+                <th>Vozidlo</th>
+                <th>Stav</th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for crew in crews %}
+            <tr>
+                <td>{{ crew.id }}</td>
+                <td>{{ crew.number }}</td>
+                <td>{{ crew.name or "-" }}</td>
+                <td>{{ crew.vehicle or "-" }}</td>
+                <td>{{ "Aktivní" if crew.is_active else "Neaktivní" }}</td>
+                <td>
+                    <form method="post" action="/crew/{{ crew.id }}/toggle_active" style="display:inline;">
+                        <button type="submit">
+                            {{ "Deaktivovat" if crew.is_active else "Aktivovat" }}
+                        </button>
+                    </form>
+                    <form method="post" action="/crew/{{ crew.id }}/delete" style="display:inline;" onsubmit="return confirm('Opravdu chcete smazat tuto posádku?');">
+                        <button type="submit">❌ Smazat</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+    <a href="/race/{{ race.id }}">⬅️ Zpět na detail závodu</a>
+</body>
+</html>

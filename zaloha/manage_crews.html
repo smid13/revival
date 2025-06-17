@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Správa posádek – {{ race.name }}</title>
+</head>
+<body>
+    <h1>Správa posádek – {{ race.name }}</h1>
+    <a href="/race/{{ race.id }}/crews/create">Přidat novou posádku</a>
+
+    <form method="post">
+        <label>Číslo posádky:</label>
+        <input type="text" name="number" required>
+        <button type="submit">Přidat posádku</button>
+    </form>
+
+    <h2>Seznam posádek</h2>
+    <ul>
+        {% for crew in crews %}
+            <li>
+                Posádka {{ crew.number }} –
+                {% if crew.is_active %}
+                    <strong>Aktivní</strong>
+                {% else %}
+                    <span style="color:red;">Vypadlá</span>
+                {% endif %}
+                | <a href="/crew/{{ crew.id }}/toggle_status">Přepnout stav</a>
+                | <a href="/crew/{{ crew.id }}/delete" onclick="return confirm('Opravdu smazat?')">Smazat</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="/race/{{ race.id }}">Zpět na závod</a></p>
+</body>
+</html>

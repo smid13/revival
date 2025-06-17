@@ -1,4 +1,2 @@
 Flask
-Flask-SQLAlchemy
-qrcode
-gunicorn
+flask_sqlalchemy
