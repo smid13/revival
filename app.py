@@ -10,17 +10,12 @@ from dotenv import load_dotenv
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app)
-
-
-
-db_url = os.environ.get("SQLALCHEMY_DATABASE_URI")
+db_url = os.getenv("SQLALCHEMY_DATABASE_URI")
 if not db_url:
     raise RuntimeError("Chybí proměnná SQLALCHEMY_DATABASE_URI")
-
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+
+
 #app = Flask(__name__)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 #db = SQLAlchemy(app)
