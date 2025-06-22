@@ -5,14 +5,22 @@ from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import qrcode
 import os
+import pytz
+from dotenv import load_dotenv
 
+# Flask a SQLAlchemy setup
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
+#app = Flask(__name__)
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+#db = SQLAlchemy(app)
+
 # složka, kam budeme ukládat QR kódy
-QR_FOLDER = os.path.join(app.static_folder, "qrcodes")
-os.makedirs(QR_FOLDER, exist_ok=True)
+#QR_FOLDER = os.path.join(app.static_folder, "qrcodes")
+#os.makedirs(QR_FOLDER, exist_ok=True)
 
 # Modely
 class Race(db.Model):
