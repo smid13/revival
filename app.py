@@ -66,6 +66,9 @@ class IdealTime(db.Model):
     crew = db.relationship('Crew', backref='ideal_times')
     checkpoint = db.relationship('Checkpoint', backref='ideal_times')
 
+with app.app_context():
+    db.create_all()
+
 @app.route("/")
 def index():
     races = Race.query.order_by(Race.start_time.desc()).all()
