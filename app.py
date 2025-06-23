@@ -23,28 +23,29 @@ db = SQLAlchemy(app)
 load_dotenv()
 
 # Konfigurace Vercel Blob
-BLOB_TOKEN = os.getenv("VERCEL_BLOB_TOKEN")
-BLOB_URL = os.getenv("VERCEL_BLOB_URL")
+VERCEL_BLOB_TOKEN = os.getenv("VERCEL_BLOB_TOKEN")
+VERCEL_BLOB_URL = os.getenv("VERCEL_BLOB_URL") or "https://jnylcpxep3ovyzbe.public.blob.vercel-storage.com"
 
 def upload_qr_to_blob(file_path: str, blob_path: str) -> str:
     """Upload file to Vercel Blob Storage"""
-    with open(file_path, 'rb') as f:
-        headers = {
-            'Authorization': f'Bearer {BLOB_TOKEN}',
-            'x-api-version': '2024-05-31'
-        }
-        files = {'file': (blob_path, f)}
+    try:
+        with open(file_path, 'rb') as f:
+            headers = {
+                'Authorization': f'Bearer {VERCEL_BLOB_TOKEN}',
+                'x-api-version': '2024-05-31'
+            }
+            response = requests.post(
+                f'{VERCEL_BLOB_URL}/upload',
+                files={'file': (blob_path, f)},
+                headers=headers,
+                params={'public': 'true'}
+            )
         
-        response = requests.post(
-            f'{BLOB_URL}/upload',
-            files=files,
-            headers=headers,
-            params={'public': 'true'}
-        )
-    
-    if response.status_code == 200:
-        return response.json().get('url')
-    raise Exception(f"Blob upload failed: {response.text}")
+        if response.status_code == 200:
+            return response.json().get('url')
+        raise Exception(f"Blob upload failed: {response.text}")
+    except Exception as e:
+        raise Exception(f"Blob upload error: {str(e)}")
 
 #app = Flask(__name__)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
