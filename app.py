@@ -37,17 +37,18 @@ def upload_qr_to_blob(file_path: str, blob_name: str) -> str:
                 'x-api-version': '2024-05-31'
             }
             response = requests.post(
-                f"{VERCEL_BLOB_URL}/upload",
-                files={'file': (blob_path, f)},
+                "https://api.vercel.com/v2/blob",  # <== tady je ta oprava
+                files={'file': (blob_name, f)},
                 headers=headers,
-                params={'public': 'true'}
+                data={'slug': blob_name, 'public': 'true'}
             )
 
-        if response.status_code == 200:
+        if response.status_code in [200, 201]:
             return response.json().get('url')
         raise Exception(f"Blob upload failed: {response.text}")
     except Exception as e:
         raise Exception(f"Blob upload error: {str(e)}")
+
 
 
 #app = Flask(__name__)
