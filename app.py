@@ -11,6 +11,9 @@ import tempfile
 from tempfile import NamedTemporaryFile
 import requests
 
+
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "fad358914b4b381d0aab5a81481b09b9")
+
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
 db_url = os.getenv("SQLALCHEMY_DATABASE_URI")
