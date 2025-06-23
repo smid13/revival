@@ -71,7 +71,7 @@ class Crew(db.Model):
     vehicle = db.Column(db.String(100))
     race_id = db.Column(db.Integer, db.ForeignKey('race.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    qr_code_url = db.Column(db.String(255))
+    qr_code_url = db.Column(db.String(500))
 
 class Checkpoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
