@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template, jsonify, url_for
+from flask import Flask, request, redirect, render_template, jsonify, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
@@ -9,6 +9,7 @@ import pytz
 from dotenv import load_dotenv
 import tempfile
 from tempfile import NamedTemporaryFile
+import requests
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
