@@ -3,7 +3,7 @@ import os
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
-BUCKET_NAME = "qrcodes"
+BUCKET_NAME = "qr"
 
 def upload_qr_to_supabase(file_path, filename):
     upload_url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{filename}"
