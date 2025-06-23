@@ -66,14 +66,15 @@
             <td>{{ crew.vehicle }}</td>
             <td>
                 <div class="qr-container">
-                    {% if crew.id %}
-                    {% set qr_url = url_for('static', filename='qrcodes/' ~ crew.name ~ '_' ~ crew.id ~ '.png') %}
-                    <img src="{{ qr_url }}" 
+                    {% if crew.qr_code_url %}
+                    <img src="{{ crew.qr_code_url }}" 
                          alt="QR kód pro posádku {{ crew.number }}" 
                          class="qr-code">
-                    <a href="{{ qr_url }}" download="{{crew.name}}_{{ crew.number }}.png" class="download-btn">
+                    <a href="{{ crew.qr_code_url }}" download="{{crew.name}}_{{ crew.number }}.png" class="download-btn">
                         Stáhnout QR kód
                     </a>
+                    {% else %}
+                    <span>QR kód není k dispozici</span>
                     {% endif %}
                 </div>
             </td>
