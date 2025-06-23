@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template, jsonify, url_for, flash
+from flask import Flask, request, redirect, render_template, jsonify, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
@@ -7,9 +7,6 @@ import qrcode
 import os
 import pytz
 from dotenv import load_dotenv
-import tempfile
-from tempfile import NamedTemporaryFile
-import requests
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
@@ -18,38 +15,6 @@ if not db_url:
     raise RuntimeError("Chybí proměnná SQLALCHEMY_DATABASE_URI")
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 db = SQLAlchemy(app)
-
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "fad358914b4b381d0aab5a81481b09b9")
-
-# Načtení environment variables
-load_dotenv()
-
-# Konfigurace Vercel Blob
-VERCEL_BLOB_TOKEN = os.getenv("VERCEL_BLOB_TOKEN")
-VERCEL_BLOB_URL = os.getenv("VERCEL_BLOB_URL") or "https://api.vercel.com/v2/blob/upload"
-
-def upload_qr_to_blob(file_path: str, blob_name: str) -> str:
-    """Upload file to Vercel Blob Storage via official API"""
-    try:
-        with open(file_path, 'rb') as f:
-            headers = {
-                'Authorization': f'Bearer {VERCEL_BLOB_TOKEN}',
-                'x-api-version': '2024-05-31'
-            }
-            response = requests.post(
-                "https://api.vercel.com/v2/blob",  # <== tady je ta oprava
-                files={'file': (blob_name, f)},
-                headers=headers,
-                data={'slug': blob_name, 'public': 'true'}
-            )
-
-        if response.status_code in [200, 201]:
-            return response.json().get('url')
-        raise Exception(f"Blob upload failed: {response.text}")
-    except Exception as e:
-        raise Exception(f"Blob upload error: {str(e)}")
-
-
 
 #app = Flask(__name__)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -76,7 +41,6 @@ class Crew(db.Model):
     vehicle = db.Column(db.String(100))
     race_id = db.Column(db.Integer, db.ForeignKey('race.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    qr_code_url = db.Column(db.String(500))
 
 class Checkpoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -173,31 +137,13 @@ def create_crew(race_id):
         db.session.add(crew)
         db.session.commit()
 
-        # Generování QR kódu
+        # Vygenerování QR kódu
         qr_text = str(crew.id)
         qr_img = qrcode.make(qr_text)
-        
-        # Dočasný soubor pro QR kód
-        with NamedTemporaryFile(suffix='.png', delete=False) as tmp:
-            qr_img.save(tmp.name)
-            try:
-                # Nahrání na Vercel Blob
-                blob_path = f"races/{race_id}/crews/{crew.id}.png"
-                qr_url = upload_qr_to_blob(tmp.name, blob_path)
-                
-                # Uložení URL do databáze
-                crew.qr_code_url = qr_url
-                db.session.commit()
-                
-                flash("QR kód byl úspěšně vygenerován", "success")
-            except Exception as e:
-                db.session.rollback()
-                flash(f"Chyba při ukládání QR kódu: {str(e)}", "danger")
-            finally:
-                # Smazání dočasného souboru
-                os.unlink(tmp.name)
+        qr_path = os.path.join(QR_FOLDER, f"{crew.name}_{crew.id}.png")
+        qr_img.save(qr_path)
 
-        # Rest of your existing code for ideal times...
+        # Pokud už existují ideální časy pro tento závod, vypočítáme je i pro novou posádku
         existing_times = IdealTime.query.filter(
             IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints]),
             IdealTime.crew_id == Crew.query.filter_by(race_id=race_id, number="1").first().id
@@ -205,13 +151,17 @@ def create_crew(race_id):
 
         if existing_times:
             try:
-                crew_offset = int(crew.number) - 1
+                crew_offset = int(crew.number) - 1  # Posádka č.1 má offset 0
                 
                 for ideal_time in existing_times:
+                    # Převedeme čas na datetime pro výpočet
                     base_date = datetime.today().date()
                     original_time = datetime.combine(base_date, ideal_time.ideal_time)
+                    
+                    # Přidáme offset podle čísla posádky
                     new_time = original_time + timedelta(minutes=crew_offset * race.crew_interval)
                     
+                    # Vytvoříme nový záznam
                     new_ideal_time = IdealTime(
                         crew_id=crew.id,
                         checkpoint_id=ideal_time.checkpoint_id,
@@ -222,6 +172,7 @@ def create_crew(race_id):
                 db.session.commit()
             except (ValueError, TypeError):
                 db.session.rollback()
+                # Pokud číslo posádky není platné, přeskočíme generování časů
 
         return redirect(f"/race/{race.id}/crews")
     
