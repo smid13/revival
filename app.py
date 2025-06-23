@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template, jsonify, url_for
+from flask import Flask, request, redirect, render_template, jsonify, url_for, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
@@ -8,6 +8,7 @@ import os
 import pytz
 from dotenv import load_dotenv
 from supabase_upload import upload_qr_to_supabase
+import sqlalchemy as sa
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
@@ -76,7 +77,22 @@ def index():
     races = Race.query.order_by(Race.start_time.desc()).all()
     return render_template("index.html", races=races)
 
-
+#smazaní databáze
+@app.route('/delete-database', methods=['POST'])
+def delete_database():
+    # Bezpečné smazání všech tabulek
+    try:
+        db.session.close()
+        db.drop_all()
+        db.create_all()  # Vytvoří prázdnou DB se správnou strukturou
+        db.session.commit()
+        flash('Databáze byla úspěšně smazána a znovu vytvořena', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Chyba při mazání databáze: {str(e)}', 'danger')
+    
+    return redirect(url_for('index'))  # Presměrujte kam potřebujete
+    
 @app.route("/create_race", methods=["GET", "POST"])
 def create_race():
     if request.method == "POST":
