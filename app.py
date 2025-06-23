@@ -42,6 +42,7 @@ class Crew(db.Model):
     vehicle = db.Column(db.String(100))
     race_id = db.Column(db.Integer, db.ForeignKey('race.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    qr_code_url = db.Column(db.String(500))
 
 class Checkpoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -144,7 +145,9 @@ def create_crew(race_id):
         file_path = f"qrcodes/{crew.name}_{crew.id}.png"
         qr_img.save(file_path)
         public_url = upload_qr_to_supabase(file_path, f"{crew.name}_{crew.id}.png")
-
+        crew.qr_code_url = public_url
+        db.session.commit()
+        
         # Pokud už existují ideální časy pro tento závod, vypočítáme je i pro novou posádku
         existing_times = IdealTime.query.filter(
             IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints]),
