@@ -141,9 +141,9 @@ def create_crew(race_id):
         # Vygenerování QR kódu
         qr_text = str(crew.id)
         qr_img = qrcode.make(qr_text)
-        qr_file_path = f"qrcodes/{crew.name}_{crew.id}.png"
-        qr_img.save(qr_file_path)
-        public_url = upload_qr_to_supabase(qr_file_path, f"{crew.name}_{crew.id}.png")
+        file_path = f"qrcodes/{crew.name}_{crew.id}.png"
+        qr_img.save(file_path)
+        public_url = upload_qr_to_supabase(file_path, f"{crew.name}_{crew.id}.png")
 
         # Pokud už existují ideální časy pro tento závod, vypočítáme je i pro novou posádku
         existing_times = IdealTime.query.filter(
