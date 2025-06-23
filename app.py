@@ -26,8 +26,8 @@ load_dotenv()
 VERCEL_BLOB_TOKEN = os.getenv("VERCEL_BLOB_TOKEN")
 VERCEL_BLOB_URL = os.getenv("VERCEL_BLOB_URL") or "https://jnylcpxep3ovyzbe.public.blob.vercel-storage.com"
 
-def upload_qr_to_blob(file_path: str, blob_path: str) -> str:
-    """Upload file to Vercel Blob Storage"""
+def upload_qr_to_blob(file_path: str, blob_name: str) -> str:
+    """Upload file to Vercel Blob Storage via official API"""
     try:
         with open(file_path, 'rb') as f:
             headers = {
@@ -35,17 +35,18 @@ def upload_qr_to_blob(file_path: str, blob_path: str) -> str:
                 'x-api-version': '2024-05-31'
             }
             response = requests.post(
-                f'{VERCEL_BLOB_URL}/upload',
-                files={'file': (blob_path, f)},
+                'https://api.vercel.com/v2/blob/upload',
+                files={'file': (blob_name, f)},
                 headers=headers,
                 params={'public': 'true'}
             )
-        
+
         if response.status_code == 200:
             return response.json().get('url')
         raise Exception(f"Blob upload failed: {response.text}")
     except Exception as e:
         raise Exception(f"Blob upload error: {str(e)}")
+
 
 #app = Flask(__name__)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
