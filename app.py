@@ -9,6 +9,7 @@ import pytz
 from dotenv import load_dotenv
 from blob_storage import upload_qr_to_blob
 import tempfile
+from tempfile import NamedTemporaryFile
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
@@ -17,6 +18,33 @@ if not db_url:
     raise RuntimeError("Chybí proměnná SQLALCHEMY_DATABASE_URI")
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 db = SQLAlchemy(app)
+
+# Načtení environment variables
+load_dotenv()
+
+# Konfigurace Vercel Blob
+BLOB_TOKEN = os.getenv("VERCEL_BLOB_TOKEN")
+BLOB_URL = os.getenv("VERCEL_BLOB_URL")
+
+def upload_qr_to_blob(file_path: str, blob_path: str) -> str:
+    """Upload file to Vercel Blob Storage"""
+    with open(file_path, 'rb') as f:
+        headers = {
+            'Authorization': f'Bearer {BLOB_TOKEN}',
+            'x-api-version': '2024-05-31'
+        }
+        files = {'file': (blob_path, f)}
+        
+        response = requests.post(
+            f'{BLOB_URL}/upload',
+            files=files,
+            headers=headers,
+            params={'public': 'true'}
+        )
+    
+    if response.status_code == 200:
+        return response.json().get('url')
+    raise Exception(f"Blob upload failed: {response.text}")
 
 #app = Flask(__name__)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -140,31 +168,29 @@ def create_crew(race_id):
         db.session.add(crew)
         db.session.commit()
 
-        # Vygenerování QR kódu
+        # Generování QR kódu
         qr_text = str(crew.id)
         qr_img = qrcode.make(qr_text)
         
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+        # Dočasný soubor pro QR kód
+        with NamedTemporaryFile(suffix='.png', delete=False) as tmp:
             qr_img.save(tmp.name)
-            
-            # Nahrání do Vercel Blob
             try:
+                # Nahrání na Vercel Blob
                 blob_path = f"races/{race_id}/crews/{crew.id}.png"
                 qr_url = upload_qr_to_blob(tmp.name, blob_path)
                 
-                # Save URL to database if you have a column for it
+                # Uložení URL do databáze
                 crew.qr_code_url = qr_url
                 db.session.commit()
                 
-                flash("QR kód byl úspěšně vygenerován a uložen", "success")
+                flash("QR kód byl úspěšně vygenerován", "success")
             except Exception as e:
                 db.session.rollback()
                 flash(f"Chyba při ukládání QR kódu: {str(e)}", "danger")
-                return redirect(f"/race/{race.id}/crews")
-            
-            # Clean up temporary file
-            os.unlink(tmp.name)
+            finally:
+                # Smazání dočasného souboru
+                os.unlink(tmp.name)
 
         # Rest of your existing code for ideal times...
         existing_times = IdealTime.query.filter(
