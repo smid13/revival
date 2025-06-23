@@ -7,7 +7,6 @@ import qrcode
 import os
 import pytz
 from dotenv import load_dotenv
-from blob_storage import upload_qr_to_blob
 import tempfile
 from tempfile import NamedTemporaryFile
 
