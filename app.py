@@ -13,6 +13,8 @@ import sqlalchemy as sa
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import unicodedata
+import re
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
@@ -127,6 +129,11 @@ def recalculate_all_ideal_times(race_id):
 
     db.session.commit()
 
+def sanitize_filename(name):
+    name = unicodedata.normalize("NFKD", name)
+    name = name.encode("ascii", "ignore").decode("ascii")
+    name = re.sub(r"[^\w\-]+", "_", name)
+    return name.strip("_")
 
 @app.route("/race/<int:race_id>/import_crews", methods=["POST"])
 def import_crews(race_id):
@@ -175,7 +182,7 @@ def import_crews(race_id):
         qr_img.save(buffer, format="PNG")
         buffer.seek(0)
 
-        filename = f"{crew.name}_{crew.id}.png"
+        filename = secure_filename(f"{crew.name}_{crew.id}.png")
         tmp_path = f"/tmp/{filename}"
         with open(tmp_path, "wb") as f:
             f.write(buffer.getvalue())
