@@ -225,7 +225,7 @@ def toggle_crew_active(crew_id):
     crew = Crew.query.get_or_404(crew_id)
     crew.is_active = not crew.is_active
     db.session.commit()
-    recalculate_all_ideal_times(race.id)
+    recalculate_all_ideal_times(crew.race.id)
     return redirect(f"/race/{crew.race_id}/crews")
 
 @app.route("/crew/<int:crew_id>/delete", methods=["POST"])
