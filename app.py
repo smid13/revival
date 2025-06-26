@@ -73,11 +73,6 @@ class IdealTime(db.Model):
 with app.app_context():
     db.create_all()
 
-from sqlalchemy import cast, Integer
-from datetime import datetime, timedelta
-from app import db
-from your_models import Race, Crew, Checkpoint, IdealTime  # uprav dle struktury projektu
-
 def recalculate_all_ideal_times(race_id):
     race = Race.query.get(race_id)
     if not race:
