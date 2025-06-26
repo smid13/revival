@@ -80,38 +80,40 @@ def recalculate_all_ideal_times(race_id):
 
     checkpoints = Checkpoint.query.filter_by(race_id=race.id).order_by(Checkpoint.order).all()
 
-    # Získáme posádku číslo 1 jako referenci
-    reference_crew = Crew.query.filter_by(race_id=race.id, number="1").first()
-    if not reference_crew:
-        return
+    # Vezmeme všechny posádky závodu
+    all_crews = Crew.query.filter_by(race_id=race.id).all()
 
+    # Seřadíme aktivní posádky podle čísla
+    active_crews = sorted(
+        [c for c in all_crews if c.is_active and c.number.isdigit()],
+        key=lambda x: int(x.number)
+    )
+
+    # Najdeme první aktivní posádku jako referenci
+    reference_crew = active_crews[0] if active_crews else None
+    if not reference_crew:
+        return  # není žádná aktivní posádka, neděláme nic
+
+    # Načteme ideální časy referenční posádky
     base_times = IdealTime.query.filter(
         IdealTime.crew_id == reference_crew.id,
         IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints])
     ).order_by(IdealTime.checkpoint_id).all()
 
     if not base_times:
-        return
+        return  # není co přepočítávat
 
-    # Smažeme všechny dosavadní ideální časy pro tento závod
-    crews = Crew.query.filter_by(race_id=race.id).all()
-    crew_ids = [c.id for c in crews]
+    # Vymažeme všechny ideální časy tohoto závodu
+    crew_ids = [c.id for c in all_crews]
     IdealTime.query.filter(IdealTime.crew_id.in_(crew_ids)).delete()
     db.session.commit()
 
-    # Seřadíme aktivní posádky podle čísla
-    sorted_crews = sorted(
-        [c for c in crews if c.is_active],
-        key=lambda x: int(x.number) if x.number.isdigit() else 9999
-    )
-
-    base_date = datetime.today().date()
-
-    for idx, crew in enumerate(sorted_crews):
-        offset = idx  # první aktivní = offset 0
+    # Výpočet nových časů
+    base_date = race.start_time.date() if race.start_time else datetime.today().date()
+    for idx, crew in enumerate(active_crews):  # idx = pozice v aktivních posádkách
         for bt in base_times:
             orig_dt = datetime.combine(base_date, bt.ideal_time)
-            new_dt = orig_dt + timedelta(minutes=offset * race.crew_interval)
+            new_dt = orig_dt + timedelta(minutes=idx * race.crew_interval)
 
             new_ideal = IdealTime(
                 crew_id=crew.id,
@@ -121,6 +123,7 @@ def recalculate_all_ideal_times(race_id):
             db.session.add(new_ideal)
 
     db.session.commit()
+
 
 @app.route("/")
 def index():
