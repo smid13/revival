@@ -72,6 +72,55 @@ class IdealTime(db.Model):
 with app.app_context():
     db.create_all()
 
+def recalculate_all_ideal_times(race_id):
+    race = Race.query.get(race_id)
+    if not race:
+        return
+
+    checkpoints = Checkpoint.query.filter_by(race_id=race.id).order_by(Checkpoint.order).all()
+
+    # Získáme posádku číslo 1 jako referenci
+    reference_crew = Crew.query.filter_by(race_id=race.id, number="1").first()
+    if not reference_crew:
+        return
+
+    base_times = IdealTime.query.filter(
+        IdealTime.crew_id == reference_crew.id,
+        IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints])
+    ).order_by(IdealTime.checkpoint_id).all()
+
+    if not base_times:
+        return
+
+    # Smažeme všechny dosavadní ideální časy pro tento závod
+    crews = Crew.query.filter_by(race_id=race.id).all()
+    crew_ids = [c.id for c in crews]
+    IdealTime.query.filter(IdealTime.crew_id.in_(crew_ids)).delete()
+    db.session.commit()
+
+    # Seřadíme aktivní posádky podle čísla
+    sorted_crews = sorted(
+        [c for c in crews if c.is_active],
+        key=lambda x: int(x.number) if x.number.isdigit() else 9999
+    )
+
+    base_date = datetime.today().date()
+
+    for idx, crew in enumerate(sorted_crews):
+        offset = idx  # první aktivní = offset 0
+        for bt in base_times:
+            orig_dt = datetime.combine(base_date, bt.ideal_time)
+            new_dt = orig_dt + timedelta(minutes=offset * race.crew_interval)
+
+            new_ideal = IdealTime(
+                crew_id=crew.id,
+                checkpoint_id=bt.checkpoint_id,
+                ideal_time=new_dt.time()
+            )
+            db.session.add(new_ideal)
+
+    db.session.commit()
+
 @app.route("/")
 def index():
     races = Race.query.order_by(Race.start_time.desc()).all()
@@ -163,38 +212,9 @@ def create_crew(race_id):
         public_url = upload_qr_to_supabase(file_path, f"{crew.name}_{crew.id}.png")
         crew.qr_code_url = public_url
         db.session.commit()
+
+        recalculate_all_ideal_times(race.id)
         
-        # Pokud už existují ideální časy pro tento závod, vypočítáme je i pro novou posádku
-        existing_times = IdealTime.query.filter(
-            IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints]),
-            IdealTime.crew_id == Crew.query.filter_by(race_id=race_id, number="1").first().id
-        ).order_by(IdealTime.checkpoint_id).all()
-
-        if existing_times:
-            try:
-                crew_offset = int(crew.number) - 1  # Posádka č.1 má offset 0
-                
-                for ideal_time in existing_times:
-                    # Převedeme čas na datetime pro výpočet
-                    base_date = datetime.today().date()
-                    original_time = datetime.combine(base_date, ideal_time.ideal_time)
-                    
-                    # Přidáme offset podle čísla posádky
-                    new_time = original_time + timedelta(minutes=crew_offset * race.crew_interval)
-                    
-                    # Vytvoříme nový záznam
-                    new_ideal_time = IdealTime(
-                        crew_id=crew.id,
-                        checkpoint_id=ideal_time.checkpoint_id,
-                        ideal_time=new_time.time()
-                    )
-                    db.session.add(new_ideal_time)
-                
-                db.session.commit()
-            except (ValueError, TypeError):
-                db.session.rollback()
-                # Pokud číslo posádky není platné, přeskočíme generování časů
-
         return redirect(f"/race/{race.id}/crews")
     
     return render_template("create_crew.html", race=race)
@@ -204,6 +224,7 @@ def toggle_crew_active(crew_id):
     crew = Crew.query.get_or_404(crew_id)
     crew.is_active = not crew.is_active
     db.session.commit()
+    recalculate_all_ideal_times(race.id)
     return redirect(f"/race/{crew.race_id}/crews")
 
 @app.route("/crew/<int:crew_id>/delete", methods=["POST"])
@@ -228,7 +249,6 @@ def edit_crew(crew_id):
         if not name or not number:
             error = "Jméno a číslo posádky jsou povinné!"
         else:
-            # Uložení původního názvu pro smazání starého QR kódu (pokud se změnil název)
             old_name = crew.name
             crew.name = name
             crew.number = number
@@ -236,20 +256,27 @@ def edit_crew(crew_id):
             crew.is_active = is_active
             db.session.commit()
 
-            # Cesta k původnímu QR kódu
-            old_qr_path = os.path.join(QR_FOLDER, f"{old_name}_{crew.id}.png")
-            # Nová cesta k QR kódu
-            new_qr_path = os.path.join(QR_FOLDER, f"{crew.name}_{crew.id}.png")
-
-            # Pokud se změnil název, smažeme starý QR kód
-            if old_name != crew.name and os.path.exists(old_qr_path):
-                os.remove(old_qr_path)
-
-            # Vytvoření nového QR kódu (stejný obsah jako při vytvoření)
+            # Vygeneruj QR kód do paměti (in-memory)
             qr_text = str(crew.id)
             qr_img = qrcode.make(qr_text)
-            qr_img.save(new_qr_path)
+            buffer = io.BytesIO()
+            qr_img.save(buffer, format="PNG")
+            buffer.seek(0)
 
+            # Nahraj do Supabase
+            filename = f"{crew.name}_{crew.id}.png"
+            file_path = f"/tmp/{filename}"
+
+            # Ulož dočasně na disk kvůli uploadu
+            with open(file_path, "wb") as f:
+                f.write(buffer.getvalue())
+
+            public_url = upload_qr_to_supabase(file_path, filename)
+            print("QR kód nahrán:", public_url)
+
+            # (Volitelně: uložit URL do databáze - např. crew.qr_url = public_url)
+
+            recalculate_all_ideal_times(crew.race.id)
             return redirect(f"/race/{crew.race_id}/crews")
 
     return render_template("edit_crew.html", crew=crew, error=error)
