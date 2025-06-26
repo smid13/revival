@@ -8,6 +8,7 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .missing { color: #999; font-style: italic; }
+        .inactive-row { opacity: 0.5; }
     </style>
 </head>
 <body>
@@ -20,12 +21,11 @@
         <p class="missing">Ideální čas pro posádku č. 1 není k dispozici.</p>
     {% endif %}
 
-    
     {% if last_crew_ideal %}
         <p><strong>Ideální čas příjezdu poslední posádky:</strong> 
            {{ last_crew_ideal.ideal_time.strftime('%H:%M') }}</p>
     {% else %}
-        <p class="missing">Ideální čas pro posádku č. 1 není k dispozici.</p>
+        <p class="missing">Ideální čas pro poslední posádku není k dispozici.</p>
     {% endif %}
 
     <p>Celkem posádek: {{ total_crews }}</p>
@@ -45,7 +45,7 @@
         </thead>
         <tbody>
             {% for data in crew_data %}
-                <tr>
+                <tr class="{% if not data.crew.is_active %}inactive-row{% endif %}" title="{% if not data.crew.is_active %}Neaktivní posádka{% endif %}">
                     <td>{{ data.crew.number }}</td>
                     <td>{{ data.crew.name }}</td>
                     <td>
@@ -62,7 +62,15 @@
                             <span class="missing">-</span>
                         {% endif %}
                     </td>
-                    <td>{{ 'Projela' if data.scan else 'Čeká' }}</td>
+                    <td>
+                        {% if not data.crew.is_active %}
+                            <span class="missing">Neaktivní</span>
+                        {% elif data.scan %}
+                            Projela
+                        {% else %}
+                            Čeká
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>
