@@ -59,6 +59,13 @@
                         <span class="button" style="background-color: gray; cursor: not-allowed;">Skenování</span>
                     {% endif %}
                 </div>
+                <!-- přidej tohle do každého race-block -->
+                <form action="{{ url_for('import_crews', race_id=race.id) }}" method="post" style="margin-top: 20px;">
+                    <input type="url" name="source_url" placeholder="URL s posádkami (např. edda.cz)" 
+                            style="width: 300px; padding: 8px;" required>
+                    <button type="submit" class="button" style="background-color: #28a745;">Importovat posádky</button>
+                </form>
+
             </div>
         {% endfor %}
     {% else %}
