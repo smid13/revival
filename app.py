@@ -131,20 +131,25 @@ def index():
     return render_template("index.html", races=races)
 
 #smazaní databáze
-@app.route('/delete-database', methods=['POST'])
+from flask import render_template, request, redirect, url_for, flash
+
+@app.route('/delete-database', methods=['GET', 'POST'])
 def delete_database():
-    # Bezpečné smazání všech tabulek
-    try:
-        db.session.close()
-        db.drop_all()
-        db.create_all()  # Vytvoří prázdnou DB se správnou strukturou
-        db.session.commit()
-        flash('Databáze byla úspěšně smazána a znovu vytvořena', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Chyba při mazání databáze: {str(e)}', 'danger')
-    
-    return redirect(url_for('index'))  # Presměrujte kam potřebujete
+    if request.method == 'POST':
+        try:
+            db.session.close()
+            db.drop_all()
+            db.create_all()
+            db.session.commit()
+            flash('Databáze byla úspěšně smazána a znovu vytvořena', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Chyba při mazání databáze: {str(e)}', 'danger')
+        return redirect(url_for('index'))
+
+    # GET požadavek zobrazí potvrzovací stránku
+    return render_template('confirm_delete.html')
+
     
 @app.route("/create_race", methods=["GET", "POST"])
 def create_race():
