@@ -275,7 +275,7 @@ def edit_crew(crew_id):
             public_url = upload_qr_to_supabase(file_path, filename)
             print("QR kód nahrán:", public_url)
 
-            # (Volitelně: uložit URL do databáze - např. crew.qr_url = public_url)
+            crew.qr_code_url = public_url
 
             recalculate_all_ideal_times(crew.race.id)
             return redirect(f"/race/{crew.race_id}/crews")
