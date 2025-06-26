@@ -15,6 +15,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import unicodedata
 import re
+from werkzeug.utils import secure_filename
+
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
