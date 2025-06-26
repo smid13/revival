@@ -372,10 +372,10 @@ def history_checkpoint(checkpoint_id):
         })
 
     # Najdeme ideální čas pro aktivní posádku č. 1
-    first_crew_ideal = next(
-        (it for it in checkpoint.ideal_times if it.crew.number == '1' and it.crew.is_active),
-        None
-    )
+    first_crew_ideal = next((
+    it for it in sorted(checkpoint.ideal_times, key=lambda x: int(x.crew.number))
+    if it.crew.is_active
+    ), None)
 
     # Najdeme ideální čas pro poslední aktivní posádku
     active_crews = [c for c in all_crews if c.is_active and c.number.isdigit()]
