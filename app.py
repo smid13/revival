@@ -132,7 +132,7 @@ def recalculate_all_ideal_times(race_id):
 def import_crews(race_id):
     race = Race.query.get_or_404(race_id)
     source_url = request.form.get("source_url")
-    start_row = int(requests.form.get("start_row",0))
+    start_row = int(request.form.get("start_row",0))
     if not source_url:
         return "Chybí source_url", 400
 
