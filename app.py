@@ -131,30 +131,35 @@ def recalculate_all_ideal_times(race_id):
 @app.route("/race/<int:race_id>/import_crews", methods=["POST"])
 def import_crews(race_id):
     race = Race.query.get_or_404(race_id)
-
     source_url = request.form.get("source_url")
+    start_row = int(requests.form.get("start_row",0))
     if not source_url:
         return "Chybí source_url", 400
 
-    # 1) Stáhnout HTML
     try:
-        resp = requests.get(source_url)
-        resp.raise_for_status()
+        tables = pd.read_html(source_url)
     except Exception as e:
-        return f"Chyba při stahování URL: {e}", 500
+        return f"Nepodařilo se načíst tabulku ze stránky: {e}", 500
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    if not tables:
+        return "Nebyly nalezeny žádné tabulky", 400
 
-    # 2) Extrakce posádek
-    crew_rows = soup.select(".crew-row")  # <- uprav dle HTML struktury
-    if not crew_rows:
-        return "Nenašel jsem žádné posádky na této stránce", 400
+    # Vybereme první tabulku (nebo podle obsahu i jinou)
+    df = tables[0]
+    df = df.iloc[start_row:]
+    # Debug: zobraz strukturu tabulky
+    print(df.head())
+
+    # Předpokládejme, že sloupce jsou např.: "Číslo", "Jméno", "Vozidlo"
+    required_columns = [0, 1, 2]
+    if not all(col in df.columns for col in required_columns):
+        return f"Chybí očekávané sloupce. Nalezeno: {df.columns}", 400
 
     new_crews = []
-    for row in crew_rows:
-        number = row.select_one(".number").get_text(strip=True)
-        name = row.select_one(".name").get_text(strip=True)
-        vehicle = row.select_one(".vehicle").get_text(strip=True)
+    for _, row in df.iterrows():
+        number = str(row[0]).strip()
+        name = str(row[1]).strip()
+        vehicle = str(row[2]).strip()
 
         crew = Crew(number=number, name=name, vehicle=vehicle, race_id=race.id)
         db.session.add(crew)
@@ -162,7 +167,7 @@ def import_crews(race_id):
 
     db.session.commit()
 
-    # 3) Vygenerovat QR kódy + upload na Supabase
+    # QR kódy + Supabase upload
     for crew in new_crews:
         qr_text = str(crew.id)
         qr_img = qrcode.make(qr_text)
@@ -180,10 +185,10 @@ def import_crews(race_id):
 
     db.session.commit()
 
-    # 4) Přepočítat ideální časy všech aktivních posádek
     recalculate_all_ideal_times(race.id)
 
-    return f"Naimportováno {len(new_crews)} posádek, vygenerované QR kódy a spočítány ideální časy.", 200
+    return f"Importováno {len(new_crews)} posádek z tabulky.", 200
+
 
 
 @app.route("/")
