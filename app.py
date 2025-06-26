@@ -80,42 +80,35 @@ def recalculate_all_ideal_times(race_id):
 
     checkpoints = Checkpoint.query.filter_by(race_id=race.id).order_by(Checkpoint.order).all()
 
-    # Najdeme první aktivní posádku podle čísla
-    reference_crew = (
-        Crew.query
-        .filter_by(race_id=race.id, is_active=True)
-        .order_by(cast(Crew.number, Integer))
-        .first()
-    )
+    # Získáme posádku číslo 1 jako referenci
+    reference_crew = Crew.query.filter_by(race_id=race.id, number="1").first()
     if not reference_crew:
-        return  # Nejsou žádné aktivní posádky
+        return
 
-    # Získáme její ideální časy
     base_times = IdealTime.query.filter(
         IdealTime.crew_id == reference_crew.id,
         IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints])
     ).order_by(IdealTime.checkpoint_id).all()
 
     if not base_times:
-        return  # Chybí ideální časy pro referenční posádku
+        return
 
-    # Smažeme všechny existující ideální časy závodu
-    crews_in_race = Crew.query.filter_by(race_id=race.id).all()
-    crew_ids = [c.id for c in crews_in_race]
+    # Smažeme všechny dosavadní ideální časy pro tento závod
+    crews = Crew.query.filter_by(race_id=race.id).all()
+    crew_ids = [c.id for c in crews]
     IdealTime.query.filter(IdealTime.crew_id.in_(crew_ids)).delete()
     db.session.commit()
 
-    # Aktivní posádky seřazené podle čísla
+    # Seřadíme aktivní posádky podle čísla
     sorted_crews = sorted(
-        [c for c in crews_in_race if c.is_active],
+        [c for c in crews if c.is_active],
         key=lambda x: int(x.number) if x.number.isdigit() else 9999
     )
 
-    # Výpočet nových časů
     base_date = datetime.today().date()
 
     for idx, crew in enumerate(sorted_crews):
-        offset = idx  # první aktivní má offset 0
+        offset = idx  # první aktivní = offset 0
         for bt in base_times:
             orig_dt = datetime.combine(base_date, bt.ideal_time)
             new_dt = orig_dt + timedelta(minutes=offset * race.crew_interval)
