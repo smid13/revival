@@ -12,6 +12,7 @@ from supabase_upload import upload_qr_to_supabase
 import sqlalchemy as sa
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
