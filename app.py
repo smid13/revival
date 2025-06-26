@@ -338,14 +338,15 @@ def history_checkpoint(checkpoint_id):
         joinedload(Checkpoint.ideal_times).joinedload(IdealTime.crew)
     ).get_or_404(checkpoint_id)
 
-    # Všechny posádky v závodě seřazené podle čísla
-    all_crews = Crew.query.filter_by(race_id=checkpoint.race_id).order_by(cast(Crew.number, Integer)).all()
+    # Všechny posádky v závodě (aktivní i neaktivní), seřazené podle čísla
+    all_crews = Crew.query.filter_by(race_id=checkpoint.race_id)\
+        .order_by(cast(Crew.number, Integer)).all()
     total_crews = len(all_crews)
 
     # Posádky, které už prošly checkpointem
     passed_crews = db.session.query(Crew).join(ScanRecord)\
         .filter(ScanRecord.checkpoint_id == checkpoint_id)\
-        .order_by(Crew.number).all()
+        .order_by(cast(Crew.number, Integer)).all()
     passed_count = len(passed_crews)
 
     # Načteme všechny ideální časy pro tento checkpoint najednou
@@ -356,39 +357,40 @@ def history_checkpoint(checkpoint_id):
     for crew in all_crews:
         scan = next((s for s in passed_crews if s.id == crew.id), None)
         ideal_time = ideal_times.get(crew.id)
-        
+
         crew_data.append({
             'crew': crew,
             'scan': scan,
             'ideal_time': ideal_time.ideal_time if ideal_time else None
         })
 
-    # Najdeme ideální čas pro posádku č. 1
-    first_crew_ideal = next((it for it in checkpoint.ideal_times 
-                           if it.crew.number == '1'), None)
-    # Najdeme ideální čas pro poslední posádku
-    if all_crews:
-        # Seřadíme posádky podle čísla (jako integer pro správné řazení)
-        sorted_crews = sorted(all_crews, key=lambda c: int(c.number))
-        last_crew_number = sorted_crews[-1].number
+    # Najdeme ideální čas pro aktivní posádku č. 1
+    first_crew_ideal = next(
+        (it for it in checkpoint.ideal_times if it.crew.number == '1' and it.crew.is_active),
+        None
+    )
+
+    # Najdeme ideální čas pro poslední aktivní posádku
+    active_crews = [c for c in all_crews if c.is_active and c.number.isdigit()]
+    if active_crews:
+        sorted_active_crews = sorted(active_crews, key=lambda c: int(c.number))
+        last_number = sorted_active_crews[-1].number
         last_crew_ideal = next(
-            (it for it in checkpoint.ideal_times if it.crew.number == last_crew_number),
+            (it for it in checkpoint.ideal_times if it.crew.number == last_number),
             None
         )
     else:
         last_crew_ideal = None
-        # Získání všech scanů pro tento checkpoint
-    scans = ScanRecord.query.filter_by(checkpoint_id=checkpoint_id)\
-        .order_by(ScanRecord.timestamp.desc()).all()
 
     return render_template("history_checkpoint.html",
-                         checkpoint=checkpoint,
-                         crew_data=crew_data,
-                         total_crews=total_crews,
-                         passed_count=passed_count,
-                         remaining=total_crews - passed_count,
-                         first_crew_ideal=first_crew_ideal,
-                         last_crew_ideal=last_crew_ideal)
+        checkpoint=checkpoint,
+        crew_data=crew_data,
+        total_crews=total_crews,
+        passed_count=passed_count,
+        remaining=total_crews - passed_count,
+        first_crew_ideal=first_crew_ideal,
+        last_crew_ideal=last_crew_ideal
+    )
 
 
 @app.route('/race/<int:race_id>/setup_ideal_times', methods=['GET', 'POST'])
