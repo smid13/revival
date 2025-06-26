@@ -4,6 +4,7 @@ from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import qrcode
+import io
 import os
 import pytz
 from dotenv import load_dotenv
