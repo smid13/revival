@@ -225,7 +225,7 @@ def toggle_crew_active(crew_id):
     crew = Crew.query.get_or_404(crew_id)
     crew.is_active = not crew.is_active
     db.session.commit()
-    recalculate_all_ideal_times(crew.race.id)
+    recalculate_all_ideal_times(crew.race_id)
     return redirect(f"/race/{crew.race_id}/crews")
 
 @app.route("/crew/<int:crew_id>/delete", methods=["POST"])
@@ -234,6 +234,7 @@ def delete_crew(crew_id):
     race_id = crew.race_id
     db.session.delete(crew)
     db.session.commit()
+    recalculate_all_ideal_times(crew.race_id)
     return redirect(f"/race/{race_id}/crews")
 
 @app.route("/crew/<int:crew_id>/edit", methods=["GET", "POST"])
@@ -277,7 +278,7 @@ def edit_crew(crew_id):
 
             crew.qr_code_url = public_url
 
-            recalculate_all_ideal_times(crew.race.id)
+            recalculate_all_ideal_times(crew.race_id)
             return redirect(f"/race/{crew.race_id}/crews")
 
     return render_template("edit_crew.html", crew=crew, error=error)
