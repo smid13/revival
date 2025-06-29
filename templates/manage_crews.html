@@ -48,7 +48,7 @@
 <body>
     <h1>Posádky – {{ race.name }}</h1>
     <a href="{{ url_for('create_crew', race_id=race.id) }}">+ Přidat posádku</a>
-    <a href="{{ url_for('race_detail', race_id=race.id) }}">← Zpět na závod</a>
+    <p><a href="{{ url_for('race_detail', race_id=race.id) }}">← Zpět na závod</a></p>
     <table>
         <tr>
             <th>ID</th>
