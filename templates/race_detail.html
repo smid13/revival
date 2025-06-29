@@ -30,7 +30,7 @@
 
   <h2>Posádky</h2>
   <ul>
-  {% for crew in crews|sort(attribute='number') %}
+  {% for crew in crews %}
     <li>Posádka č. {{ crew.number }} - {{ crew.name }} ({{ crew.vehicle }})</li>
   {% endfor %}
 </ul>
