@@ -224,7 +224,7 @@ def import_crews(race_id):
     db.session.commit()
 
     # QR kódy + Supabase upload
-        for crew in new_crews:
+    for crew in new_crews:
         qr_buffer = generate_qr_with_center_text(str(crew.id), crew.number)
         filename = secure_filename(f"{crew.name}_{crew.id}.png")
         tmp_path = f"/tmp/{filename}"
