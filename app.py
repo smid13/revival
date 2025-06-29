@@ -88,9 +88,6 @@ with app.app_context():
     db.create_all()
 
 def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
-    import qrcode
-    from PIL import Image, ImageDraw, ImageFont
-    import io
 
     # Vytvoření QR kódu
     qr = qrcode.QRCode(
@@ -119,7 +116,7 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
 
     for size in range(max_font_size, 0, -1):
         try:
-            candidate_font = ImageFont.truetype("arial.ttf", size=size)
+            candidate_font = ImageFont.truetype("DejaVuSans.ttf", size=size)
         except IOError:
             candidate_font = ImageFont.load_default()
         
