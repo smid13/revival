@@ -261,19 +261,27 @@ def race_detail(race_id):
         ideal_times = IdealTime.query.filter_by(crew_id=first_crew.id).all()
         checkpoint_times = {time.checkpoint_id: time.ideal_time.strftime('%H:%M') for time in ideal_times}
 
+    # Ideální časy
     all_ideal_times = IdealTime.query.join(Crew).filter(Crew.race_id == race.id).all()
     crew_times = {}
-    
+
     for time in all_ideal_times:
         crew_times.setdefault(time.crew_id, {})[time.checkpoint_id] = time.ideal_time.strftime('%H:%M')
-    
+        
+    # REÁLNÉ ČASY
+    all_scans = ScanRecord.query.join(Crew).filter(Crew.race_id == race.id).all()
+    scan_times = {}
+    for scan in all_scans:
+        scan_times.setdefault(scan.crew_id, {})[scan.checkpoint_id] = scan.timestamp.strftime('%H:%M')
+        
     return render_template(
         "race_detail.html", 
         race=race, 
         crews=crews, 
         checkpoints=checkpoints,
         checkpoint_times=checkpoint_times,
-        crew_times=crew_times
+        crew_times=crew_times,
+        scan_times=scan_times
     )
 
 @app.route("/race/<int:race_id>/crews", methods=["GET"])
