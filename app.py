@@ -88,33 +88,50 @@ with app.app_context():
     db.create_all()
 
 def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
-    qr = qrcode.QRCode(box_size=16, border=4)
+    import qrcode
+    from PIL import Image, ImageDraw, ImageFont
+    import io
+
+    # QR s vysokou chybovou korekcí
+    qr = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
     qr.add_data(data)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
     draw = ImageDraw.Draw(qr_img)
+    width, height = qr_img.size
 
+    # Vytvoření bílého čtverce uprostřed
+    box_size = int(width * 0.3)  # Čtverec zabírá cca 30 % šířky obrázku
+    top_left = ((width - box_size) // 2, (height - box_size) // 2)
+    bottom_right = ((width + box_size) // 2, (height + box_size) // 2)
+    draw.rectangle([top_left, bottom_right], fill="white")
+
+    # Nápis (číslo posádky) do středu
     try:
-        # Zkus načíst běžný systémový font
-        font = ImageFont.truetype("arial.ttf", 200)
+        font = ImageFont.truetype("arial.ttf", size=int(box_size * 0.4))
     except IOError:
         font = ImageFont.load_default()
 
-    # Získání rozměrů textu pomocí textbbox
     text_bbox = draw.textbbox((0, 0), center_text, font=font)
     text_width = text_bbox[2] - text_bbox[0]
     text_height = text_bbox[3] - text_bbox[1]
+    text_position = (
+        (width - text_width) // 2,
+        (height - text_height) // 2,
+    )
+    draw.text(text_position, center_text, font=font, fill="black")
 
-    img_width, img_height = qr_img.size
-    position = ((img_width - text_width) // 2, (img_height - text_height) // 2)
-
-    draw.text(position, center_text, font=font, fill="black")
-
+    # Uložení do bufferu
     buffer = io.BytesIO()
     qr_img.save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
+
 
 
 def recalculate_all_ideal_times(race_id):
