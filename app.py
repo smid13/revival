@@ -556,6 +556,13 @@ def setup_ideal_times(race_id):
                         ideal_time=crew_ideal_time.time()
                     )
                     db.session.add(ideal_record)
+                    
+            # Aktualizace názvů checkpointů podle formuláře
+
+            for ck in checkpoints:
+                new_name = request.form.get(f"name_{ck.id}")
+                if new_name:
+                    ck.name = new_name
 
             db.session.commit()
             return redirect(url_for('checkpoint_overview', race_id=race_id, success=True))
