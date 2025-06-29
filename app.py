@@ -596,37 +596,43 @@ def export_results(race_id):
     crews = Crew.query.filter_by(race_id=race_id).all()
     checkpoints = Checkpoint.query.filter_by(race_id=race_id).order_by(Checkpoint.order).all()
 
+    # 1. Natahni všechny ideal times a scan records najednou
+    ideal_times = IdealTime.query.filter(
+        IdealTime.crew_id.in_([c.id for c in crews]),
+        IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints])
+    ).all()
+
+    scan_records = ScanRecord.query.filter(
+        ScanRecord.crew_id.in_([c.id for c in crews]),
+        ScanRecord.checkpoint_id.in_([ck.id for ck in checkpoints])
+    ).order_by(ScanRecord.timestamp).all()
+
+    # 2. Převeď do slovníků pro rychlý přístup
+    ideal_dict = {(i.crew_id, i.checkpoint_id): i.ideal_time for i in ideal_times}
+    scan_dict = {}
+    for s in scan_records:
+        key = (s.crew_id, s.checkpoint_id)
+        if key not in scan_dict:  # vezmeme jen první scan
+            scan_dict[key] = s.timestamp.time()
+
+    # 3. Generuj výstup
     rows = []
-
     for crew in crews:
-        row = {
-            "Číslo": crew.number,
-            "Jméno": crew.name,
-            "Vozidlo": crew.vehicle
-        }
-
+        row = {"Číslo": crew.number, "Jméno": crew.name, "Vozidlo": crew.vehicle}
         total_penalty = 0
 
         for ck in checkpoints:
-            # Načtení ideálního času
-            ideal = IdealTime.query.filter_by(crew_id=crew.id, checkpoint_id=ck.id).first()
-            ideal_time = ideal.ideal_time if ideal else None
+            ideal = ideal_dict.get((crew.id, ck.id))
+            real = scan_dict.get((crew.id, ck.id))
 
-            # Načtení skutečného času
-            scan = ScanRecord.query.filter_by(crew_id=crew.id, checkpoint_id=ck.id).order_by(ScanRecord.timestamp).first()
-            real_time = scan.timestamp.time() if scan else None
+            row[f"{ck.name} - Ideál"] = ideal.strftime("%H:%M") if ideal else "-"
+            row[f"{ck.name} - Skutečnost"] = real.strftime("%H:%M") if real else "-"
 
-            row[f"{ck.name} - Ideál"] = ideal_time.strftime("%H:%M") if ideal_time else "-"
-            row[f"{ck.name} - Skutečnost"] = real_time.strftime("%H:%M") if real_time else "-"
-
-            # Výpočet trestných bodů
-            if ideal_time and real_time:
-                ideal_dt = datetime.combine(datetime.today(), ideal_time)
-                real_dt = datetime.combine(datetime.today(), real_time)
-                diff = abs((real_dt - ideal_dt).total_seconds()) / 60
+            if ideal and real:
+                diff = abs((datetime.combine(datetime.today(), real) - datetime.combine(datetime.today(), ideal)).total_seconds()) / 60
                 penalty = min(int(diff) * 10, 100)
             else:
-                penalty = 100  # max trest, pokud něco chybí
+                penalty = 100
 
             row[f"{ck.name} - Body"] = penalty
             total_penalty += penalty
@@ -634,21 +640,18 @@ def export_results(race_id):
         row["Celkem body"] = total_penalty
         rows.append(row)
 
-    # Vytvoření Excelu
+    # Excel
     df = pd.DataFrame(rows)
     output = BytesIO()
     df.to_excel(output, index=False)
     output.seek(0)
 
-    filename = f"vysledky_zavodu_{race.id}.xlsx"
-
     return send_file(
         output,
         as_attachment=True,
-        download_name=filename,
+        download_name=f"vysledky_zavodu_{race.id}.xlsx",
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-
     
 if __name__ == "__main__":
     with app.app_context():
