@@ -1,3 +1,4 @@
+
 from flask import Flask, request, redirect, render_template, jsonify, url_for, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Time, cast, Integer
@@ -253,28 +254,20 @@ def race_detail(race_id):
     crews = Crew.query.filter_by(race_id=race.id).order_by(Crew.number).all()
     checkpoints = Checkpoint.query.filter_by(race_id=race.id).order_by(Checkpoint.order).all()
     
-    # Získání ideálních časů první posádky (pro souhrnnou tabulku)
-    first_crew = next((crew for crew in crews if str(crew.number) == '1'), None)
+    # Získání ideálních časů první posádky
+    first_crew = next((crew for crew in crews if crew.number == '1'), None)
     checkpoint_times = {}
     if first_crew:
-        ideal_times_first = IdealTime.query.filter_by(crew_id=first_crew.id).all()
-        checkpoint_times = {time.checkpoint_id: time.ideal_time.strftime('%H:%M') for time in ideal_times_first}
+        ideal_times = IdealTime.query.filter_by(crew_id=first_crew.id).all()
+        checkpoint_times = {time.checkpoint_id: time.ideal_time.strftime('%H:%M') for time in ideal_times}
     
-    # 🔧 Nové: Získání všech ideálních časů pro zobrazení v tabulce
-    all_ideal_times = IdealTime.query.join(Crew).filter(Crew.race_id == race.id).all()
-    ideal_times = {
-        (time.crew_id, time.checkpoint_id): time.ideal_time for time in all_ideal_times
-    }
-
     return render_template(
         "race_detail.html", 
         race=race, 
         crews=crews, 
         checkpoints=checkpoints,
-        checkpoint_times=checkpoint_times,
-        ideal_times=ideal_times  # přidáno
+        checkpoint_times=checkpoint_times
     )
-
 
 @app.route("/race/<int:race_id>/crews", methods=["GET"])
 def manage_crews(race_id):
