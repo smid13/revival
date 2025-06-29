@@ -58,6 +58,9 @@
             <th>QR kód</th>
             <th>Stav</th>
             <th>Akce</th>
+            <th>Třída</th>
+            <th>Rok výroby</th>
+            <th>Trestné body</th>
         </tr>
         {% for crew in crews %}
         <tr>
@@ -93,6 +96,9 @@
                     <button>Edit</button>
                 </a>
             </td>
+            <td>{{ crew.category }}</td>
+            <td>{{ crew.vehicle_year }}</td>
+            <td>{{ crew.penalty_year }}</td>
         </tr>
         {% endfor %}
     </table>
