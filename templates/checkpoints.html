@@ -2,7 +2,7 @@
 <ul>
   {% for checkpoint in checkpoints %}
     <li>
-      <strong>ČK {{ checkpoint.id }}</strong><br>
+      <strong>{{ checkpoint.name }}</strong><br>
       Ideální čas pro posádku č. 1:
       {% for arrival in checkpoint.ideal_times %}
         {% if arrival.crew.number == "1" %}
