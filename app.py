@@ -18,6 +18,7 @@ import unicodedata
 import re
 from werkzeug.utils import secure_filename
 from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 
 # Flask a SQLAlchemy setup
@@ -85,6 +86,35 @@ class IdealTime(db.Model):
 
 with app.app_context():
     db.create_all()
+
+def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
+    qr = qrcode.QRCode(box_size=10, border=4)
+    qr.add_data(data)
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+    draw = ImageDraw.Draw(qr_img)
+    font_size = qr_img.size[0] // 8
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except IOError:
+        font = ImageFont.load_default()
+
+    text_width, text_height = draw.textsize(center_text, font=font)
+    position = ((qr_img.size[0] - text_width) // 2, (qr_img.size[1] - text_height) // 2)
+
+    # Překryj bílý obdélník a napiš číslo posádky
+    draw.rectangle(
+        [position[0] - 5, position[1] - 5, position[0] + text_width + 5, position[1] + text_height + 5],
+        fill="white"
+    )
+    draw.text(position, center_text, fill="black", font=font)
+
+    buffer = io.BytesIO()
+    qr_img.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer
+
 
 def recalculate_all_ideal_times(race_id):
     race = Race.query.get(race_id)
@@ -194,17 +224,12 @@ def import_crews(race_id):
     db.session.commit()
 
     # QR kódy + Supabase upload
-    for crew in new_crews:
-        qr_text = str(crew.id)
-        qr_img = qrcode.make(qr_text)
-        buffer = io.BytesIO()
-        qr_img.save(buffer, format="PNG")
-        buffer.seek(0)
-
+        for crew in new_crews:
+        qr_buffer = generate_qr_with_center_text(str(crew.id), crew.number)
         filename = secure_filename(f"{crew.name}_{crew.id}.png")
         tmp_path = f"/tmp/{filename}"
         with open(tmp_path, "wb") as f:
-            f.write(buffer.getvalue())
+            f.write(qr_buffer.getvalue())
 
         public_url = upload_qr_to_supabase(tmp_path, filename)
         crew.qr_code_url = public_url
@@ -321,10 +346,11 @@ def create_crew(race_id):
         db.session.commit()
 
         # Vygenerování QR kódu
-        qr_text = str(crew.id)
-        qr_img = qrcode.make(qr_text)
+        qr_buffer = generate_qr_with_center_text(str(crew.id), crew.number)
         file_path = f"qrcodes/{crew.name}_{crew.id}.png"
-        qr_img.save(file_path)
+        with open(file_path, "wb") as f:
+            f.write(qr_buffer.getvalue())
+
         public_url = upload_qr_to_supabase(file_path, f"{crew.name}_{crew.id}.png")
         crew.qr_code_url = public_url
         db.session.commit()
@@ -374,19 +400,13 @@ def edit_crew(crew_id):
             db.session.commit()
 
             # Vygeneruj QR kód do paměti (in-memory)
-            qr_text = str(crew.id)
-            qr_img = qrcode.make(qr_text)
-            buffer = io.BytesIO()
-            qr_img.save(buffer, format="PNG")
-            buffer.seek(0)
-
-            # Nahraj do Supabase
+            qr_buffer = generate_qr_with_center_text(str(crew.id), crew.number)
             filename = f"{crew.name}_{crew.id}.png"
             file_path = f"/tmp/{filename}"
 
-            # Ulož dočasně na disk kvůli uploadu
             with open(file_path, "wb") as f:
-                f.write(buffer.getvalue())
+                f.write(qr_buffer.getvalue())
+
 
             public_url = upload_qr_to_supabase(file_path, filename)
             print("QR kód nahrán:", public_url)
