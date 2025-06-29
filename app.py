@@ -92,6 +92,7 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     from PIL import Image, ImageDraw, ImageFont
     import io
 
+    # Vytvoření QR kódu
     qr = qrcode.QRCode(
         error_correction=qrcode.constants.ERROR_CORRECT_H,
         box_size=10,
@@ -104,34 +105,50 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     draw = ImageDraw.Draw(qr_img)
     width, height = qr_img.size
 
-    # Menší bílý čtverec – cca 25 % obrázku
-    box_size = int(width * 0.25)
+    # Bílý čtverec ve středu – cca 20 % velikosti QR obrázku
+    box_size = int(width * 0.20)
     top_left = ((width - box_size) // 2, (height - box_size) // 2)
     bottom_right = ((width + box_size) // 2, (height + box_size) // 2)
     draw.rectangle([top_left, bottom_right], fill="white")
 
-    # Velký font – 30 % šířky QR kódu
-    try:
-        font_size = int(width * 0.3)
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", size=font_size)
-    except IOError:
-        font = ImageFont.load_default()
-        print("⚠️ DejaVuSans-Bold.ttf nenalezen, používá se fallback font.")
+    # Dynamické přizpůsobení velikosti písma
+    box_width = bottom_right[0] - top_left[0]
+    box_height = bottom_right[1] - top_left[1]
+    max_font_size = box_height  # Začneme největší možnou velikostí
+    font = None
 
-    # Výpočet pozice textu
+    for size in range(max_font_size, 0, -1):
+        try:
+            candidate_font = ImageFont.truetype("arial.ttf", size=size)
+        except IOError:
+            candidate_font = ImageFont.load_default()
+        
+        text_bbox = draw.textbbox((0, 0), center_text, font=candidate_font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        if text_width <= box_width and text_height <= box_height:
+            font = candidate_font
+            break
+
+    if font is None:
+        font = ImageFont.load_default()
+        print("⚠️ Nepodařilo se najít vhodnou velikost písma, použit fallback font.")
+
+    # Zarovnání textu doprostřed bílého rámečku
     text_bbox = draw.textbbox((0, 0), center_text, font=font)
     text_width = text_bbox[2] - text_bbox[0]
     text_height = text_bbox[3] - text_bbox[1]
-    text_position = (
-        (width - text_width) // 2,
-        (height - text_height) // 2,
-    )
-    draw.text(text_position, center_text, font=font, fill="black")
+    text_x = top_left[0] + (box_width - text_width) // 2
+    text_y = top_left[1] + (box_height - text_height) // 2
+    draw.text((text_x, text_y), center_text, font=font, fill="black")
 
+    # Výstup jako PNG do paměti
     buffer = io.BytesIO()
     qr_img.save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
+
 
 
 
