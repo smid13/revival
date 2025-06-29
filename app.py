@@ -88,7 +88,7 @@ with app.app_context():
     db.create_all()
 
 def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
-    qr = qrcode.QRCode(box_size=10, border=4)
+    qr = qrcode.QRCode(box_size=16, border=4)
     qr.add_data(data)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
@@ -97,7 +97,7 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
 
     try:
         # Zkus načíst běžný systémový font
-        font = ImageFont.truetype("arial.ttf", 40)
+        font = ImageFont.truetype("arial.ttf", 200)
     except IOError:
         font = ImageFont.load_default()
 
