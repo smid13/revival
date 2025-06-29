@@ -177,7 +177,7 @@ def import_crews(race_id):
         vehicle = str(row[2]).strip()
         penalty_year = str(row[5]).strip()
         vehicle_year = str(row[6]).strip()
-        category = str(row[7]).strip
+        category = str(row[7]).strip()
 
         crew = Crew(
             number=number,
