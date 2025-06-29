@@ -56,8 +56,8 @@ class Crew(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     qr_code_url = db.Column(db.String(500))
     category = db.Column(db.String(50), nullable=True)  # Třída závodu
-    vehicle_year = db.Column(db.Integer, nullable=True)  # Rok výroby
-    penalty_year = db.Column(db.Integer, default=0)  # Trestné body za rok výroby
+    vehicle_year = db.Column(db.String(50), nullable=True)  # Rok výroby
+    penalty_year = db.Column(db.String(50), default=0)  # Trestné body za rok výroby
 
 class Checkpoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -175,9 +175,9 @@ def import_crews(race_id):
         number = str(row[0]).strip()
         name = str(row[1]).strip()
         vehicle = str(row[2]).strip()
-        penalty_year = int(row[5])
-        vehicle_year = int(row[6])
-        category = int(row[7])
+        penalty_year = str(row[5]).strip()
+        vehicle_year = str(row[6]).strup()
+        category = str(row[7]).strip
 
         crew = Crew(
             number=number,
