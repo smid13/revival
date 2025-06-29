@@ -1,28 +1,53 @@
-<form method="POST">
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <title>Nastavení ideálních časů – {{ race.name }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; }
+    input[type="text"] { width: 100%; padding: 8px; }
+    button { padding: 10px 20px; font-size: 16px; }
+    h3 { margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <h1>Nastavení ideálních časů pro závod: {{ race.name }}</h1>
+
+  <form method="POST">
+    <!-- Startovní čas -->
     <div class="form-group">
-        <label for="start_time">Čas prvního průjezdu první posádky (HH:MM):</label>
-        <input type="text" id="start_time" name="start_time" 
-               class="form-control" required pattern="\d{1,2}:\d{2}"
-               placeholder="Např. 08:00">
+      <label for="start_time">Čas prvního průjezdu první posádky (HH:MM):</label>
+      <input type="text" id="start_time" name="start_time" required pattern="\d{1,2}:\d{2}" placeholder="Např. 08:00">
     </div>
 
-    <h3>Časové kontroly</h3>
-    {% for i, ck in enumerate(checkpoints) %}
-        <div class="form-group">
-            <label for="name_{{ ck.id }}">Název CK {{ i+1 }}:</label>
-            <input type="text" id="name_{{ ck.id }}" name="name_{{ ck.id }}" 
-                   class="form-control" value="{{ ck.name }}" required>
-        </div>
-
-        {% if i > 0 %}
-        <div class="form-group">
-            <label for="interval_{{ ck.id }}">Interval od {{ checkpoints[i-1].name }} (MM:SS):</label>
-            <input type="text" id="interval_{{ ck.id }}" name="interval_{{ checkpoints[i-1].id }}_{{ ck.id }}" 
-                   class="form-control" required pattern="\d{1,3}:\d{2}"
-                   placeholder="Např. 15:00">
-        </div>
-        {% endif %}
+    <!-- Přepis názvů CK -->
+    <h3>Názvy časových kontrol</h3>
+    {% for ck in checkpoints %}
+      <div class="form-group">
+        <label for="name_{{ ck.id }}">Kontrola č. {{ loop.index }}:</label>
+        <input type="text" name="name_{{ ck.id }}" value="{{ ck.name }}" required>
+      </div>
     {% endfor %}
 
-    <button type="submit" class="btn btn-primary">Uložit časy</button>
-</form>
+    <!-- Intervaly mezi checkpointy -->
+    {% if checkpoints|length > 1 %}
+      <h3>Intervaly mezi časovými kontrolami</h3>
+      {% for i in range(1, checkpoints|length) %}
+        <div class="form-group">
+          <label for="interval_{{i}}">Interval mezi {{ checkpoints[i-1].name }} a {{ checkpoints[i].name }} (MM:SS):</label>
+          <input type="text"
+                 id="interval_{{i}}"
+                 name="interval_{{ checkpoints[i-1].id }}_{{ checkpoints[i].id }}"
+                 required pattern="\d{1,3}:\d{2}" placeholder="Např. 15:00">
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <button type="submit">Uložit časy</button>
+  </form>
+
+  <p><a href="{{ url_for('race_detail', race_id=race.id) }}">← Zpět na závod</a></p>
+</body>
+</html>
