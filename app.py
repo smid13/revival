@@ -103,7 +103,7 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     width, height = qr_img.size
 
     # Bílý čtverec ve středu – cca 20 % velikosti QR obrázku
-    box_size = int(width * 0.20)
+    box_size = int(width * 0.25)
     top_left = ((width - box_size) // 2, (height - box_size) // 2)
     bottom_right = ((width + box_size) // 2, (height + box_size) // 2)
     draw.rectangle([top_left, bottom_right], fill="white")
@@ -131,7 +131,8 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     if font is None:
         font = ImageFont.load_default()
         print("⚠️ Nepodařilo se najít vhodnou velikost písma, použit fallback font.")
-
+    else:
+        print(font)
     # Zarovnání textu doprostřed bílého rámečku
     text_bbox = draw.textbbox((0, 0), center_text, font=font)
     text_width = text_bbox[2] - text_bbox[0]
