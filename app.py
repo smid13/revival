@@ -104,22 +104,21 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     draw = ImageDraw.Draw(qr_img)
     width, height = qr_img.size
 
-    # Větší čtverec – zabírá cca 35 % QR obrázku
-    box_size = int(width * 0.35)
+    # Menší bílý čtverec – cca 25 % obrázku
+    box_size = int(width * 0.25)
     top_left = ((width - box_size) // 2, (height - box_size) // 2)
     bottom_right = ((width + box_size) // 2, (height + box_size) // 2)
     draw.rectangle([top_left, bottom_right], fill="white")
 
-    # Větší font – podle šířky obrázku, ne boxu
+    # Velký font – 30 % šířky QR kódu
     try:
-        font_size = int(width * 0.1)
-        font = ImageFont.truetype("arial.ttf", size=font_size)
+        font_size = int(width * 0.3)
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", size=font_size)
     except IOError:
-        # Vytvoříme fallback font s ručním zvětšením (neškálovaný, ale větší)
         font = ImageFont.load_default()
-        print("⚠️ Pozor: Arial.ttf se nepodařilo načíst, fallback font je malý.")
+        print("⚠️ DejaVuSans-Bold.ttf nenalezen, používá se fallback font.")
 
-    # Spočítat pozici textu
+    # Výpočet pozice textu
     text_bbox = draw.textbbox((0, 0), center_text, font=font)
     text_width = text_bbox[2] - text_bbox[0]
     text_height = text_bbox[3] - text_bbox[1]
