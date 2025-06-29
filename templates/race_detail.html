@@ -29,11 +29,32 @@
   <p><a href="{{ url_for('index') }}">Domů</a></p>
 
   <h2>Posádky</h2>
-  <ul>
-  {% for crew in crews %}
-    <li>Posádka č. {{ crew.number }} - {{ crew.name }} ({{ crew.vehicle }})</li>
-  {% endfor %}
-</ul>
+  <table>
+    <thead>
+      <tr>
+        <th>Číslo</th>
+        <th>Jméno</th>
+        <th>Vozidlo</th>
+        {% for ck in checkpoints %}
+          <th>{{ ck.name }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for crew in crews %}
+      <tr>
+        <td>{{ crew.number }}</td>
+        <td>{{ crew.name }}</td>
+        <td>{{ crew.vehicle }}</td>
+        {% for ck in checkpoints %}
+          <td>
+            {{ crew_times.get(crew.id, {}).get(ck.id, '(nenastaveno)') }}
+          </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
 
   <h2>Časové kontroly</h2>
