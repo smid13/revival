@@ -1,5 +1,5 @@
 
-from flask import Flask, request, redirect, render_template, jsonify, url_for, abort, send_file
+from flask import Flask, request, redirect, render_template, jsonify, url_for, abort, send_file, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
@@ -27,6 +27,7 @@ if not db_url:
     raise RuntimeError("Chybí proměnná SQLALCHEMY_DATABASE_URI")
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 db = SQLAlchemy(app)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
 #app = Flask(__name__)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
