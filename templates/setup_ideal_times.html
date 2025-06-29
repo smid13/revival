@@ -1,28 +1,28 @@
+<form method="POST">
+    <div class="form-group">
+        <label for="start_time">Čas prvního průjezdu první posádky (HH:MM):</label>
+        <input type="text" id="start_time" name="start_time" 
+               class="form-control" required pattern="\d{1,2}:\d{2}"
+               placeholder="Např. 08:00">
+    </div>
 
-
-{% block content %}
-<div class="container">
-    <h2>Nastavení ideálních časů pro závod: {{ race.name }}</h2>
-
-    <form method="POST">
+    <h3>Časové kontroly</h3>
+    {% for i, ck in enumerate(checkpoints) %}
         <div class="form-group">
-            <label for="start_time">Čas prvního průjezdu první posádky (HH:MM):</label>
-            <input type="text" id="start_time" name="start_time" 
-                   class="form-control" required pattern="\d{1,2}:\d{2}"
-                   placeholder="Např. 08:00">
+            <label for="name_{{ ck.id }}">Název CK {{ i+1 }}:</label>
+            <input type="text" id="name_{{ ck.id }}" name="name_{{ ck.id }}" 
+                   class="form-control" value="{{ ck.name }}" required>
         </div>
 
-        <h3>Intervaly mezi checkpointy</h3>
-        {% for i in range(1, checkpoints|length) %}
-            <div class="form-group">
-                <label for="interval_{{i}}">Interval mezi {{ checkpoints[i-1].name }} a {{ checkpoints[i].name }} (MM:SS):</label>
-                <input type="text" id="interval_{{i}}" name="interval_{{ checkpoints[i-1].id }}_{{ checkpoints[i].id }}" 
-                       class="form-control" required pattern="\d{1,3}:\d{2}"
-                       placeholder="Např. 15:00">
-            </div>
-        {% endfor %}
+        {% if i > 0 %}
+        <div class="form-group">
+            <label for="interval_{{ ck.id }}">Interval od {{ checkpoints[i-1].name }} (MM:SS):</label>
+            <input type="text" id="interval_{{ ck.id }}" name="interval_{{ checkpoints[i-1].id }}_{{ ck.id }}" 
+                   class="form-control" required pattern="\d{1,3}:\d{2}"
+                   placeholder="Např. 15:00">
+        </div>
+        {% endif %}
+    {% endfor %}
 
-        <button type="submit" class="btn btn-primary">Uložit časy</button>
-    </form>
-</div>
-{% endblock %}
+    <button type="submit" class="btn btn-primary">Uložit časy</button>
+</form>
