@@ -251,7 +251,7 @@ def create_race():
 @app.route("/race/<int:race_id>")
 def race_detail(race_id):
     race = Race.query.get_or_404(race_id)
-    crews = Crew.query.filter_by(race_id=race.id).order_by(Crew.number).all()
+    crews = Crew.query.filter_by(race_id=race.id).order_by(cast(Crew.number, Integer)).all()
     checkpoints = Checkpoint.query.filter_by(race_id=race.id).order_by(Checkpoint.order).all()
     
     # Získání ideálních časů první posádky
