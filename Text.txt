@@ -1,45 +1,5 @@
-def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
-    import qrcode
-    from PIL import Image, ImageDraw, ImageFont
-    import io
-
-    qr = qrcode.QRCode(
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-
-    draw = ImageDraw.Draw(qr_img)
-    width, height = qr_img.size
-
-    # Menší bílý čtverec – cca 25 % obrázku
-    box_size = int(width * 0.25)
-    top_left = ((width - box_size) // 2, (height - box_size) // 2)
-    bottom_right = ((width + box_size) // 2, (height + box_size) // 2)
-    draw.rectangle([top_left, bottom_right], fill="white")
-
-    # Velký font – 30 % šířky QR kódu
-    try:
-        font_size = int(width * 0.3)
-        font = ImageFont.truetype("arial.ttf", size=font_size)
-    except IOError:
-        font = ImageFont.load_default()
-        print("⚠️ Arial.ttf nenalezen, používá se fallback font.")
-
-    # Výpočet pozice textu
-    text_bbox = draw.textbbox((0, 0), center_text, font=font)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
-    text_position = (
-        (width - text_width) // 2,
-        (height - text_height) // 2,
-    )
-    draw.text(text_position, center_text, font=font, fill="black")
-
-    buffer = io.BytesIO()
-    qr_img.save(buffer, format="PNG")
-    buffer.seek(0)
-    return buffer
+zkusit znovu nahrat posadky, nenahrala se cesta ke qr kodu
+excel exportuje jak ma, upravit formatovani sloupcu, z naan udelat nuly, pridat pripocteni tb za rv do celkovych tb, pridat kdyz neni skutecny cas aby nepocitalo tb
+pridat na stranku race/id odkaz na export 
+predelat stranku historie ck
+pridat tlacitko na hromadne stazeni qr kodu 
