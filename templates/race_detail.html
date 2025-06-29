@@ -29,11 +29,10 @@
 
   <h2>Posádky</h2>
   <ul>
-  {% for crew in crews|sort(attribute='number') %}
-    <li>Posádka č. {{ crew.number }} - {{ crew.name }} ({{ crew.vehicle }})</li>
-  {% endfor %}
-</ul>
-
+    {% for crew in crews|sort(attribute='number') %}
+      <li>Posádka č. {{ crew.number }} - {{ crew.name }} ({{ crew.vehicle }})</li>
+    {% endfor %}
+  </ul>
 
   <h2>Časové kontroly</h2>
   <table>
@@ -54,6 +53,35 @@
             (nenastaveno)
           {% endif %}
         </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Ideální časy posádek</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Posádka</th>
+        {% for ck in checkpoints %}
+          <th>{{ ck.name }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for crew in crews|sort(attribute='number') %}
+      <tr>
+        <td>Posádka č. {{ crew.number }} - {{ crew.name }}</td>
+        {% for ck in checkpoints %}
+          <td>
+            {% set time = ideal_times.get((crew.id, ck.id)) %}
+            {% if time %}
+              {{ time.strftime('%H:%M:%S') }}
+            {% else %}
+              (nenastaveno)
+            {% endif %}
+          </td>
+        {% endfor %}
       </tr>
       {% endfor %}
     </tbody>
