@@ -1,5 +1,5 @@
 
-from flask import Flask, request, redirect, render_template, jsonify, url_for, abort
+from flask import Flask, request, redirect, render_template, jsonify, url_for, abort, send_file
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
@@ -17,6 +17,7 @@ import pandas as pd
 import unicodedata
 import re
 from werkzeug.utils import secure_filename
+from io import BytesIO
 
 
 # Flask a SQLAlchemy setup
@@ -588,6 +589,66 @@ def checkpoint_overview(race_id):
         times = {it.checkpoint_id: it.ideal_time for it in IdealTime.query.filter_by(crew_id=first_crew.id).all()}
 
     return render_template("checkpoints.html", race=race, checkpoints=checkpoints, ideal_times=times)
+
+@app.route('/race/<int:race_id>/export_results')
+def export_results(race_id):
+    race = Race.query.get_or_404(race_id)
+    crews = Crew.query.filter_by(race_id=race_id).all()
+    checkpoints = Checkpoint.query.filter_by(race_id=race_id).order_by(Checkpoint.order).all()
+
+    rows = []
+
+    for crew in crews:
+        row = {
+            "Číslo": crew.number,
+            "Jméno": crew.name,
+            "Vozidlo": crew.vehicle
+        }
+
+        total_penalty = 0
+
+        for ck in checkpoints:
+            # Načtení ideálního času
+            ideal = IdealTime.query.filter_by(crew_id=crew.id, checkpoint_id=ck.id).first()
+            ideal_time = ideal.ideal_time if ideal else None
+
+            # Načtení skutečného času
+            scan = ScanRecord.query.filter_by(crew_id=crew.id, checkpoint_id=ck.id).order_by(ScanRecord.timestamp).first()
+            real_time = scan.timestamp.time() if scan else None
+
+            row[f"{ck.name} - Ideál"] = ideal_time.strftime("%H:%M") if ideal_time else "-"
+            row[f"{ck.name} - Skutečnost"] = real_time.strftime("%H:%M") if real_time else "-"
+
+            # Výpočet trestných bodů
+            if ideal_time and real_time:
+                ideal_dt = datetime.combine(datetime.today(), ideal_time)
+                real_dt = datetime.combine(datetime.today(), real_time)
+                diff = abs((real_dt - ideal_dt).total_seconds()) / 60
+                penalty = min(int(diff) * 10, 100)
+            else:
+                penalty = 100  # max trest, pokud něco chybí
+
+            row[f"{ck.name} - Body"] = penalty
+            total_penalty += penalty
+
+        row["Celkem body"] = total_penalty
+        rows.append(row)
+
+    # Vytvoření Excelu
+    df = pd.DataFrame(rows)
+    output = BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+
+    filename = f"vysledky_zavodu_{race.id}.xlsx"
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
     
 if __name__ == "__main__":
     with app.app_context():
