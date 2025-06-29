@@ -54,6 +54,9 @@ class Crew(db.Model):
     race_id = db.Column(db.Integer, db.ForeignKey('race.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     qr_code_url = db.Column(db.String(500))
+    category = db.Column(db.String(50), nullable=True)  # Třída závodu
+    vehicle_year = db.Column(db.Integer, nullable=True)  # Rok výroby
+    penalty_year = db.Column(db.Integer, default=0)  # Trestné body za rok výroby
 
 class Checkpoint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -162,7 +165,7 @@ def import_crews(race_id):
     print(df.head())
 
     # Předpokládejme, že sloupce jsou např.: "Číslo", "Jméno", "Vozidlo"
-    required_columns = [0, 1, 2]
+    required_columns = [0, 1, 2, 5, 6, 7]
     if not all(col in df.columns for col in required_columns):
         return f"Chybí očekávané sloupce. Nalezeno: {df.columns}", 400
 
@@ -171,8 +174,19 @@ def import_crews(race_id):
         number = str(row[0]).strip()
         name = str(row[1]).strip()
         vehicle = str(row[2]).strip()
+        penalty_year = int(row[5])
+        vehicle_year = int(row[6])
+        category = int(row[7])
 
-        crew = Crew(number=number, name=name, vehicle=vehicle, race_id=race.id)
+        crew = Crew(
+            number=number,
+            name=name,
+            vehicle=vehicle,
+            category=category,
+            vehicle_year=vehicle_year,
+            penalty_year=penalty_year,
+            race_id=race.id
+        )
         db.session.add(crew)
         new_crews.append(crew)
 
