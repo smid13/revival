@@ -94,21 +94,22 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
     draw = ImageDraw.Draw(qr_img)
-    font_size = qr_img.size[0] // 8
+
     try:
-        font = ImageFont.truetype("arial.ttf", font_size)
+        # Zkus načíst běžný systémový font
+        font = ImageFont.truetype("arial.ttf", 40)
     except IOError:
         font = ImageFont.load_default()
 
-    text_width, text_height = draw.textsize(center_text, font=font)
-    position = ((qr_img.size[0] - text_width) // 2, (qr_img.size[1] - text_height) // 2)
+    # Získání rozměrů textu pomocí textbbox
+    text_bbox = draw.textbbox((0, 0), center_text, font=font)
+    text_width = text_bbox[2] - text_bbox[0]
+    text_height = text_bbox[3] - text_bbox[1]
 
-    # Překryj bílý obdélník a napiš číslo posádky
-    draw.rectangle(
-        [position[0] - 5, position[1] - 5, position[0] + text_width + 5, position[1] + text_height + 5],
-        fill="white"
-    )
-    draw.text(position, center_text, fill="black", font=font)
+    img_width, img_height = qr_img.size
+    position = ((img_width - text_width) // 2, (img_height - text_height) // 2)
+
+    draw.text(position, center_text, font=font, fill="black")
 
     buffer = io.BytesIO()
     qr_img.save(buffer, format="PNG")
