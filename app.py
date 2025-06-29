@@ -688,7 +688,7 @@ def export_results(race_id):
     # 3. Generuj výstup
     rows = []
     for crew in crews:
-        row = {"Číslo": crew.number, "Jméno": crew.name, "Vozidlo": crew.vehicle}
+        row = {"Číslo": crew.number, "Jméno": crew.name, "Vozidlo": crew.vehicle, "Třída": crew.category, "Rok výroby": crew.vehicle_year, "Trestne body za rv auta": crew.penalty_year}
         total_penalty = 0
 
         for ck in checkpoints:
