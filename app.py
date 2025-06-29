@@ -92,7 +92,6 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     from PIL import Image, ImageDraw, ImageFont
     import io
 
-    # QR s vysokou chybovou korekcí
     qr = qrcode.QRCode(
         error_correction=qrcode.constants.ERROR_CORRECT_H,
         box_size=10,
@@ -105,18 +104,22 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     draw = ImageDraw.Draw(qr_img)
     width, height = qr_img.size
 
-    # Vytvoření bílého čtverce uprostřed
-    box_size = int(width * 0.3)  # Čtverec zabírá cca 30 % šířky obrázku
+    # Větší čtverec – zabírá cca 35 % QR obrázku
+    box_size = int(width * 0.35)
     top_left = ((width - box_size) // 2, (height - box_size) // 2)
     bottom_right = ((width + box_size) // 2, (height + box_size) // 2)
     draw.rectangle([top_left, bottom_right], fill="white")
 
-    # Nápis (číslo posádky) do středu
+    # Větší font – podle šířky obrázku, ne boxu
     try:
-        font = ImageFont.truetype("arial.ttf", size=int(box_size * 0.4))
+        font_size = int(width * 0.1)
+        font = ImageFont.truetype("arial.ttf", size=font_size)
     except IOError:
+        # Vytvoříme fallback font s ručním zvětšením (neškálovaný, ale větší)
         font = ImageFont.load_default()
+        print("⚠️ Pozor: Arial.ttf se nepodařilo načíst, fallback font je malý.")
 
+    # Spočítat pozici textu
     text_bbox = draw.textbbox((0, 0), center_text, font=font)
     text_width = text_bbox[2] - text_bbox[0]
     text_height = text_bbox[3] - text_bbox[1]
@@ -126,11 +129,11 @@ def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
     )
     draw.text(text_position, center_text, font=font, fill="black")
 
-    # Uložení do bufferu
     buffer = io.BytesIO()
     qr_img.save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
+
 
 
 
