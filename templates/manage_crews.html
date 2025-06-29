@@ -1,90 +1,102 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
-  <title>Detail závodu</title>
-  <style>
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-  </style>
+    <title>Správa posádek – {{ race.name }}</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .qr-code {
+            max-width: 100px;
+            height: auto;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .button-group form {
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .download-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 12px;
+            margin: 2px 0;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    </style>
 </head>
 <body>
-  <h1>Závod: {{ race.name }}</h1>
-  <p>Start první posádky: {{ race.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
-  <p>Interval mezi posádkami: {{ race.crew_interval }} minut</p>
-  
-  <p><a href="/race/{{ race.id }}/crews">Správa posádek</a></p>
-  <p><a href="/race/{{ race.id }}/setup_ideal_times">Nastavit ideální časy</a></p>
-  <p><a href="{{ url_for('index') }}">Domů</a></p>
-
-  <h2>Posádky</h2>
-  <ul>
-    {% for crew in crews|sort(attribute='number') %}
-      <li>Posádka č. {{ crew.number }} - {{ crew.name }} ({{ crew.vehicle }})</li>
-    {% endfor %}
-  </ul>
-
-  <h2>Časové kontroly</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Název</th>
-        <th>Ideální čas první posádky</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for ck in checkpoints %}
-      <tr>
-        <td>{{ ck.name }}</td>
-        <td>
-          {% if checkpoint_times.get(ck.id) %}
-            {{ checkpoint_times[ck.id] }}
-          {% else %}
-            (nenastaveno)
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <h2>Ideální časy posádek</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Posádka</th>
-        {% for ck in checkpoints %}
-          <th>{{ ck.name }}</th>
+    <h1>Posádky – {{ race.name }}</h1>
+    <a href="{{ url_for('create_crew', race_id=race.id) }}">+ Přidat posádku</a>
+    <p><a href="{{ url_for('race_detail', race_id=race.id) }}">← Zpět na závod</a></p>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Číslo</th>
+            <th>Jméno posádky</th>
+            <th>Vozidlo</th>
+            <th>QR kód</th>
+            <th>Stav</th>
+            <th>Akce</th>
+        </tr>
+        {% for crew in crews %}
+        <tr>
+            <td>{{ crew.id }}</td>
+            <td>{{ crew.number }}</td>
+            <td>{{ crew.name }}</td>
+            <td>{{ crew.vehicle }}</td>
+            <td>
+                <div class="qr-container">
+                    {% if crew.qr_code_url %}
+                    <img src="{{ crew.qr_code_url }}" 
+                         alt="QR kód pro posádku {{ crew.number }}" 
+                         class="qr-code">
+                    <a href="{{ crew.qr_code_url }}?download=" download="{{crew.name}}_{{ crew.number }}.png" class="download-btn">
+                        Stáhnout QR kód
+                    </a>
+                    {% else %}
+                    <span>QR kód není k dispozici</span>
+                    {% endif %}
+                </div>
+            </td>
+            <td>{{ 'Aktivní' if crew.is_active else 'Neaktivní' }}</td>
+            <td class="button-group">
+                <form method="post" action="{{ url_for('toggle_crew_active', crew_id=crew.id) }}">
+                    <button type="submit">
+                        {% if crew.is_active %}Deaktivovat{% else %}Aktivovat{% endif %}
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('delete_crew', crew_id=crew.id) }}" onsubmit="return confirm('Opravdu smazat?');">
+                    <button type="submit">Smazat</button>
+                </form>
+                <a href="{{ url_for('edit_crew', crew_id=crew.id) }}">
+                    <button>Edit</button>
+                </a>
+            </td>
+        </tr>
         {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for crew in crews|sort(attribute='number') %}
-      <tr>
-        <td>Posádka č. {{ crew.number }} - {{ crew.name }}</td>
-        {% for ck in checkpoints %}
-          <td>
-            {% set time = ideal_times.get((crew.id, ck.id)) %}
-            {% if time %}
-              {{ time.strftime('%H:%M:%S') }}
-            {% else %}
-              (nenastaveno)
-            {% endif %}
-          </td>
-        {% endfor %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    </table>
+    <br>
+    <a href="{{ url_for('race_detail', race_id=race.id) }}">← Zpět na závod</a>
 </body>
 </html>
