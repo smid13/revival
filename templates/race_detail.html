@@ -48,8 +48,15 @@
         <td>{{ crew.vehicle }}</td>
         {% for ck in checkpoints %}
           <td>
-            {{ crew_times.get(crew.id, {}).get(ck.id, '(nenastaveno)') }}
+            {% set ideal = crew_times.get(crew.id, {}).get(ck.id) %}
+            {% set real = scan_times.get(crew.id, {}).get(ck.id) %}
+            {% if ideal or real %}
+              {{ ideal or '(--:--)' }} / {{ real or '(--:--)' }}
+            {% else %}
+              (nenastaveno)
+            {% endif %}
           </td>
+
         {% endfor %}
       </tr>
       {% endfor %}
