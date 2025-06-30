@@ -681,17 +681,25 @@ def export_results(race_id):
 
     rows = []
     for crew in crews:
-        vehicle_year = crew.vehicle_year if crew.vehicle_year is not None else 0
-        penalty_year = crew.penalty_year if crew.penalty_year is not None else 0
+    # Bezpečný převod na čísla
+    try:
+        vehicle_year = int(crew.vehicle_year)
+    except (TypeError, ValueError):
+        vehicle_year = 0
 
-        row = {
-            "Číslo": crew.number,
-            "Jméno": crew.name,
-            "Vozidlo": crew.vehicle,
-            "Třída": crew.category,
-            "Rok výroby": vehicle_year,
-            "Trestne body za rv auta": penalty_year
-        }
+    try:
+        penalty_year = int(crew.penalty_year)
+    except (TypeError, ValueError):
+        penalty_year = 0
+
+    row = {
+        "Číslo": crew.number,
+        "Jméno": crew.name,
+        "Vozidlo": crew.vehicle,
+        "Třída": crew.category,
+        "Rok výroby": vehicle_year,
+        "Trestne body za rv auta": penalty_year
+    }
 
         total_penalty = 0
 
