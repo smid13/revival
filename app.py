@@ -682,15 +682,15 @@ def export_results(race_id):
     rows = []
     for crew in crews:
     # Bezpečný převod na čísla
-    try:
-        vehicle_year = int(crew.vehicle_year)
-    except (TypeError, ValueError):
-        vehicle_year = 0
-
-    try:
-        penalty_year = int(crew.penalty_year)
-    except (TypeError, ValueError):
-        penalty_year = 0
+        try:
+            vehicle_year = int(crew.vehicle_year)
+        except (TypeError, ValueError):
+            vehicle_year = 0
+    
+        try:
+            penalty_year = int(crew.penalty_year)
+        except (TypeError, ValueError):
+            penalty_year = 0
 
     row = {
         "Číslo": crew.number,
