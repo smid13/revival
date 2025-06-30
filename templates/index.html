@@ -60,6 +60,7 @@
                     <a href="{{ url_for('manage_crews', race_id=race.id) }}" class="button">Posádky</a>
                     <a href="{{ url_for('setup_ideal_times', race_id=race.id) }}" class="button">+ Zadej časové kontroly</a>
                     <a href="{{ url_for('checkpoint_overview', race_id=race.id) }}" class="button">Časové kontroly</a>
+                    <a href="{{ url_for('export_results', race_id=race.id) }}" class="button">Stáhnout výsledky</a>
                     {% if race.checkpoints %}
                         <a href="{{ url_for('scan_page', checkpoint_id=race.checkpoints[0].id) }}" class="button">Skenování</a>
                     {% else %}
