@@ -687,7 +687,7 @@ def export_results(race_id):
         def safe_int(val):
             try:
                 # pokud je float a je NaN, nastav 0
-                if isinstance(val, float) and math.isnan(val):
+                if == "nan":
                     return 0
                 return int(val)
             except (TypeError, ValueError):
