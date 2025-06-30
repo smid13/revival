@@ -686,14 +686,14 @@ def export_results(race_id):
         # Ošetření NaN a převod na int
         try:
                 # pokud je float a je NaN, nastav 0
-                if vehicle_year = "nan":
+                if vehicle_year == "nan":
                     return 0
                 return int(val)
             except (TypeError, ValueError):
                 return 0
         try:
                 # pokud je float a je NaN, nastav 0
-                if penalty_year = "nan":
+                if penalty_year == "nan":
                     return 0
                 return int(val)
             except (TypeError, ValueError):
