@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Time, cast, Integer
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import qrcode
 import io
 import os
@@ -19,7 +20,7 @@ import re
 from werkzeug.utils import secure_filename
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-
+from openpyxl.utils import get_column_letter
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
@@ -30,13 +31,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 db = SQLAlchemy(app)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
-#app = Flask(__name__)
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-#db = SQLAlchemy(app)
-
-# složka, kam budeme ukládat QR kódy
-#QR_FOLDER = os.path.join(app.static_folder, "qrcodes")
-#os.makedirs(QR_FOLDER, exist_ok=True)
+def get_czech_time():
+    return datetime.now(ZoneInfo("Europe/Prague"))
 
 # Modely
 class Race(db.Model):
@@ -70,7 +66,7 @@ class ScanRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     crew_id = db.Column(db.Integer, db.ForeignKey('crew.id'), nullable=False)
     checkpoint_id = db.Column(db.Integer, db.ForeignKey('checkpoint.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=get_czech_time)
 
     crew = db.relationship('Crew', backref='scans')
     checkpoint = db.relationship('Checkpoint', backref='scans')
@@ -666,7 +662,6 @@ def export_results(race_id):
     crews = Crew.query.filter_by(race_id=race_id).all()
     checkpoints = Checkpoint.query.filter_by(race_id=race_id).order_by(Checkpoint.order).all()
 
-    # 1. Natahni všechny ideal times a scan records najednou
     ideal_times = IdealTime.query.filter(
         IdealTime.crew_id.in_([c.id for c in crews]),
         IdealTime.checkpoint_id.in_([ck.id for ck in checkpoints])
@@ -677,18 +672,27 @@ def export_results(race_id):
         ScanRecord.checkpoint_id.in_([ck.id for ck in checkpoints])
     ).order_by(ScanRecord.timestamp).all()
 
-    # 2. Převeď do slovníků pro rychlý přístup
     ideal_dict = {(i.crew_id, i.checkpoint_id): i.ideal_time for i in ideal_times}
     scan_dict = {}
     for s in scan_records:
         key = (s.crew_id, s.checkpoint_id)
-        if key not in scan_dict:  # vezmeme jen první scan
+        if key not in scan_dict:
             scan_dict[key] = s.timestamp.time()
 
-    # 3. Generuj výstup
     rows = []
     for crew in crews:
-        row = {"Číslo": crew.number, "Jméno": crew.name, "Vozidlo": crew.vehicle, "Třída": crew.category, "Rok výroby": crew.vehicle_year, "Trestne body za rv auta": crew.penalty_year}
+        vehicle_year = crew.vehicle_year if crew.vehicle_year is not None else 0
+        penalty_year = crew.penalty_year if crew.penalty_year is not None else 0
+
+        row = {
+            "Číslo": crew.number,
+            "Jméno": crew.name,
+            "Vozidlo": crew.vehicle,
+            "Třída": crew.category,
+            "Rok výroby": vehicle_year,
+            "Trestne body za rv auta": penalty_year
+        }
+
         total_penalty = 0
 
         for ck in checkpoints:
@@ -707,13 +711,26 @@ def export_results(race_id):
             row[f"{ck.name} - Body"] = penalty
             total_penalty += penalty
 
+        total_penalty += penalty_year  # přičti trestné body za rok výroby
+
         row["Celkem body"] = total_penalty
         rows.append(row)
 
-    # Excel
     df = pd.DataFrame(rows)
+
     output = BytesIO()
-    df.to_excel(output, index=False)
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Výsledky')
+        worksheet = writer.sheets['Výsledky']
+
+        # Automatická šířka sloupců
+        for i, col in enumerate(df.columns, 1):
+            max_length = max(
+                df[col].astype(str).map(len).max(),
+                len(str(col))
+            )
+            worksheet.column_dimensions[get_column_letter(i)].width = max_length + 2
+
     output.seek(0)
 
     return send_file(
@@ -722,6 +739,7 @@ def export_results(race_id):
         download_name=f"vysledky_zavodu_{race.id}.xlsx",
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+
     
 if __name__ == "__main__":
     with app.app_context():
