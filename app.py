@@ -21,6 +21,7 @@ from werkzeug.utils import secure_filename
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 from openpyxl.utils import get_column_letter
+import math
 
 # Flask a SQLAlchemy setup
 app = Flask(__name__)
@@ -680,17 +681,20 @@ def export_results(race_id):
             scan_dict[key] = s.timestamp.time()
 
     rows = []
+
     for crew in crews:
-        # Bezpečný převod na čísla
-        try:
-            vehicle_year = int(crew.vehicle_year)
-        except (TypeError, ValueError):
-            vehicle_year = 0
+        # Ošetření NaN a převod na int
+        def safe_int(val):
+            try:
+                # pokud je float a je NaN, nastav 0
+                if isinstance(val, float) and math.isnan(val):
+                    return 0
+                return int(val)
+            except (TypeError, ValueError):
+                return 0
     
-        try:
-            penalty_year = int(crew.penalty_year)
-        except (TypeError, ValueError):
-            penalty_year = 0
+        vehicle_year = safe_int(crew.vehicle_year)
+        penalty_year = safe_int(crew.penalty_year)
     
         row = {
             "Číslo": crew.number,
@@ -719,9 +723,10 @@ def export_results(race_id):
             row[f"{ck.name} - Body"] = penalty
             total_penalty += penalty
     
-        total_penalty += penalty_year  # <- TADY už je to int
+        total_penalty += penalty_year
         row["Celkem body"] = total_penalty
         rows.append(row)
+
 
 
     df = pd.DataFrame(rows)
