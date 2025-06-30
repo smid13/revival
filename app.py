@@ -681,7 +681,7 @@ def export_results(race_id):
 
     rows = []
     for crew in crews:
-    # Bezpečný převod na čísla
+        # Bezpečný převod na čísla
         try:
             vehicle_year = int(crew.vehicle_year)
         except (TypeError, ValueError):
@@ -691,38 +691,38 @@ def export_results(race_id):
             penalty_year = int(crew.penalty_year)
         except (TypeError, ValueError):
             penalty_year = 0
-
-    row = {
-        "Číslo": crew.number,
-        "Jméno": crew.name,
-        "Vozidlo": crew.vehicle,
-        "Třída": crew.category,
-        "Rok výroby": vehicle_year,
-        "Trestne body za rv auta": penalty_year
-    }
-
+    
+        row = {
+            "Číslo": crew.number,
+            "Jméno": crew.name,
+            "Vozidlo": crew.vehicle,
+            "Třída": crew.category,
+            "Rok výroby": vehicle_year,
+            "Trestne body za rv auta": penalty_year
+        }
+    
         total_penalty = 0
-
+    
         for ck in checkpoints:
             ideal = ideal_dict.get((crew.id, ck.id))
             real = scan_dict.get((crew.id, ck.id))
-
+    
             row[f"{ck.name} - Ideál"] = ideal.strftime("%H:%M") if ideal else "-"
             row[f"{ck.name} - Skutečnost"] = real.strftime("%H:%M") if real else "-"
-
+    
             if ideal and real:
                 diff = abs((datetime.combine(datetime.today(), real) - datetime.combine(datetime.today(), ideal)).total_seconds()) / 60
                 penalty = min(int(diff) * 10, 100)
             else:
                 penalty = 100
-
+    
             row[f"{ck.name} - Body"] = penalty
             total_penalty += penalty
-
-        total_penalty += penalty_year  # přičti trestné body za rok výroby
-
+    
+        total_penalty += penalty_year  # <- TADY už je to int
         row["Celkem body"] = total_penalty
         rows.append(row)
+
 
     df = pd.DataFrame(rows)
 
