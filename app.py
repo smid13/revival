@@ -684,15 +684,21 @@ def export_results(race_id):
 
     for crew in crews:
         # Ošetření NaN a převod na int
-        def safe_int(val):
-            try:
+        try:
                 # pokud je float a je NaN, nastav 0
-                if == "nan":
+                if vehicle_year = "nan":
                     return 0
                 return int(val)
             except (TypeError, ValueError):
                 return 0
-    
+        try:
+                # pokud je float a je NaN, nastav 0
+                if penalty_year = "nan":
+                    return 0
+                return int(val)
+            except (TypeError, ValueError):
+                return 0
+        
         vehicle_year = safe_int(crew.vehicle_year)
         penalty_year = safe_int(crew.penalty_year)
     
