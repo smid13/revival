@@ -683,24 +683,17 @@ def export_results(race_id):
     rows = []
 
     for crew in crews:
-        # Ošetření NaN a převod na int
+        # Převod vehicle_year
         try:
-                # pokud je float a je NaN, nastav 0
-                if vehicle_year == "nan":
-                    return 0
-                return int(val)
-            except (TypeError, ValueError):
-                return 0
+            vehicle_year = int(crew.vehicle_year) if crew.vehicle_year and str(crew.vehicle_year).lower() != "nan" else 0
+        except (TypeError, ValueError):
+            vehicle_year = 0
+    
+        # Převod penalty_year
         try:
-                # pokud je float a je NaN, nastav 0
-                if penalty_year == "nan":
-                    return 0
-                return int(val)
-            except (TypeError, ValueError):
-                return 0
-        
-        vehicle_year = int(crew.vehicle_year)
-        penalty_year = int(crew.penalty_year)
+            penalty_year = int(crew.penalty_year) if crew.penalty_year and str(crew.penalty_year).lower() != "nan" else 0
+        except (TypeError, ValueError):
+            penalty_year = 0
     
         row = {
             "Číslo": crew.number,
@@ -721,7 +714,10 @@ def export_results(race_id):
             row[f"{ck.name} - Skutečnost"] = real.strftime("%H:%M") if real else "-"
     
             if ideal and real:
-                diff = abs((datetime.combine(datetime.today(), real) - datetime.combine(datetime.today(), ideal)).total_seconds()) / 60
+                diff = abs(
+                    (datetime.combine(datetime.today(), real) -
+                     datetime.combine(datetime.today(), ideal)).total_seconds()
+                ) / 60
                 penalty = min(int(diff) * 10, 100)
             else:
                 penalty = 100
