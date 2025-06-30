@@ -699,8 +699,8 @@ def export_results(race_id):
             except (TypeError, ValueError):
                 return 0
         
-        vehicle_year = safe_int(crew.vehicle_year)
-        penalty_year = safe_int(crew.penalty_year)
+        vehicle_year = int(crew.vehicle_year)
+        penalty_year = int(crew.penalty_year)
     
         row = {
             "Číslo": crew.number,
