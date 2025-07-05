@@ -754,6 +754,11 @@ def export_results(race_id):
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
+@app.route("/test-time")
+def test_time():
+    now = get_czech_time()
+    return f"Aktuální čas v Praze: {now.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+
     
 if __name__ == "__main__":
     with app.app_context():
