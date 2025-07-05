@@ -477,7 +477,7 @@ def scan_qr(crew_id, checkpoint_id):
 
     return jsonify({
         "status": "ok",
-        "message": f"Zaznamenán průchod v {scan.timestamp.strftime('%H:%M:%S %Z')}"
+        "message": f"Zaznamenán průchod posádky {crew.name} na {checkpoint.name} v {scan.timestamp}"
     })
 
 
