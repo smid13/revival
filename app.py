@@ -32,6 +32,9 @@ app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 db = SQLAlchemy(app)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
+def get_czech_time():
+    return datetime.now(ZoneInfo("Europe/Prague"))
+    
 # Modely
 class Race(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -80,9 +83,6 @@ class IdealTime(db.Model):
 
 with app.app_context():
     db.create_all()
-
-def get_czech_time():
-    return datetime.now(ZoneInfo("Europe/Prague"))
 
 def safe_int(val):
     try:
