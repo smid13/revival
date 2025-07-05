@@ -475,7 +475,7 @@ def scan_qr(crew_id, checkpoint_id):
 
     return jsonify({
         "status": "ok",
-        "message": f"Zaznamenán průchod posádky {crew.name} na {checkpoint.name} v {scan.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        "message": f"Zaznamenán průchod posádky {crew.name} na {checkpoint.name} v {scan.timestamp.astimezone(ZoneInfo('Europe/Prague')).strftime('%Y-%m-%d %H:%M:%S')}"
     })
 
 
@@ -693,7 +693,7 @@ def export_results(race_id):
     for s in scan_records:
         key = (s.crew_id, s.checkpoint_id)
         if key not in scan_dict:
-            scan_dict[key] = s.timestamp.time()
+            scan_dict[key] = s.timestamp.astimezone(ZoneInfo("Europe/Prague"))
 
     rows = []
 
@@ -715,18 +715,36 @@ def export_results(race_id):
         for ck in checkpoints:
             ideal = ideal_dict.get((crew.id, ck.id))
             real = scan_dict.get((crew.id, ck.id))
-    
-            row[f"{ck.name} - Ideál"] = ideal.strftime("%H:%M") if ideal else "-"
-            row[f"{ck.name} - Skutečnost"] = real.strftime("%H:%M") if real else "-"
-    
-            if ideal and real:
+        
+            # Převod časových zón
+            if ideal:
+                ideal = ideal.astimezone(ZoneInfo("Europe/Prague"))
+                ideal_time = ideal.time()
+                row[f"{ck.name} - Ideál"] = ideal.strftime("%H:%M")
+            else:
+                ideal_time = None
+                row[f"{ck.name} - Ideál"] = "-"
+        
+            if real:
+                real = real.astimezone(ZoneInfo("Europe/Prague"))
+                real_time = real.time()
+                row[f"{ck.name} - Skutečnost"] = real.strftime("%H:%M")
+            else:
+                real_time = None
+                row[f"{ck.name} - Skutečnost"] = "-"
+        
+            # Výpočet penalizace
+            if ideal_time and real_time:
                 diff = abs(
-                    (datetime.combine(datetime.today(), real) -
-                     datetime.combine(datetime.today(), ideal)).total_seconds()
+                    (datetime.combine(datetime.today(), real_time) -
+                     datetime.combine(datetime.today(), ideal_time)).total_seconds()
                 ) / 60
                 penalty = min(int(diff) * 10, 100)
             else:
                 penalty = 100
+        
+            row[f"{ck.name} - Body"] = penalty
+            total_penalty += penalty
     
             row[f"{ck.name} - Body"] = penalty
             total_penalty += penalty
