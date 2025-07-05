@@ -67,7 +67,7 @@ class ScanRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     crew_id = db.Column(db.Integer, db.ForeignKey('crew.id'), nullable=False)
     checkpoint_id = db.Column(db.Integer, db.ForeignKey('checkpoint.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=get_czech_time)
+    timestamp = db.Column(db.DateTime(timezone=True), default=get_czech_time)
 
     crew = db.relationship('Crew', backref='scans')
     checkpoint = db.relationship('Checkpoint', backref='scans')
