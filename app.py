@@ -458,19 +458,28 @@ def edit_crew(crew_id):
 
     return render_template("edit_crew.html", crew=crew, error=error)
 
+from zoneinfo import ZoneInfo
+
 @app.route("/scan/<int:crew_id>/<int:checkpoint_id>", methods=["POST"])
 def scan_qr(crew_id, checkpoint_id):
     crew = Crew.query.get_or_404(crew_id)
     checkpoint = Checkpoint.query.get_or_404(checkpoint_id)
 
-    scan = ScanRecord(crew_id=crew.id, checkpoint_id=checkpoint.id)
+    now = get_czech_time()  # << VYNUTÍME SI PRAŽSKÝ ČAS
+
+    scan = ScanRecord(
+        crew_id=crew.id,
+        checkpoint_id=checkpoint.id,
+        timestamp=now  # << TADY PŘEDÁŠ KONKRÉTNÍ ČAS, ne spoléháš na default
+    )
     db.session.add(scan)
     db.session.commit()
 
     return jsonify({
         "status": "ok",
-        "message": f"Zaznamenán průchod posádky {crew.name} na {checkpoint.name} v {scan.timestamp}"
+        "message": f"Zaznamenán průchod v {scan.timestamp.strftime('%H:%M:%S %Z')}"
     })
+
 
 @app.route("/scan")
 def scan_page():
