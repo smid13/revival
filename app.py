@@ -32,9 +32,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 db = SQLAlchemy(app)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
-def get_czech_time():
-    return datetime.now(ZoneInfo("Europe/Prague"))
-
 # Modely
 class Race(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -83,6 +80,17 @@ class IdealTime(db.Model):
 
 with app.app_context():
     db.create_all()
+
+def get_czech_time():
+    return datetime.now(ZoneInfo("Europe/Prague"))
+
+def safe_int(val):
+    try:
+        if str(val).strip().lower() in ["", "nan", "none"]:
+            return 0
+        return int(float(val))
+    except (ValueError, TypeError):
+        return 0
 
 def generate_qr_with_center_text(data: str, center_text: str) -> io.BytesIO:
 
@@ -683,17 +691,8 @@ def export_results(race_id):
     rows = []
 
     for crew in crews:
-        # Převod vehicle_year
-        try:
-            vehicle_year = int(crew.vehicle_year) if crew.vehicle_year and str(crew.vehicle_year).lower() != "nan" else 0
-        except (TypeError, ValueError):
-            vehicle_year = 0
-    
-        # Převod penalty_year
-        try:
-            penalty_year = int(crew.penalty_year) if crew.penalty_year and str(crew.penalty_year).lower() != "nan" else 0
-        except (TypeError, ValueError):
-            penalty_year = 0
+        vehicle_year = safe_int(crew.vehicle_year)
+        penalty_year = safe_int(crew.penalty_year)
     
         row = {
             "Číslo": crew.number,
